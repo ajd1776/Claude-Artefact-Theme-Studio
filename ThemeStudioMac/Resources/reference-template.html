@@ -1,0 +1,420 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Terminal Panel Reference</title>
+<style>
+/* ═══════════════════════════════════════════════════════════════════════════
+   TERMINAL PANEL: AJD's default visual style (from the Bookmark Admin Panel)
+   Pure black, deep green text, deep dark blue for highlight/selection ONLY.
+   Condition colours are strict: each one means exactly one thing, page-wide.
+   Everything below is made-up example data. Copy this file, keep the CSS and
+   the small JS helpers, swap the content.
+   ═══════════════════════════════════════════════════════════════════════════ */
+:root {
+  /* base: dark (the default look) */
+  --bg: #000000; --fg: #00e35a; --fg2: #0aa544; --dim: #0b7a35; --line: #0b5a2b; --faint: #062b15;
+  --blue: #081a66; --blue-fg: #e6ecff; --blue-line: #2f56ff;
+  /* condition colours: one meaning each (rename the meanings per project, never reuse a colour for two) */
+  --k-cyan: #00e5ff;    /* a kind / type            */
+  --k-yellow: #ffe600;  /* a purpose / use          */
+  --k-magenta: #ff2bd6; /* a project / owner        */
+  --k-white: #ffffff;   /* totals, headline numbers */
+  --k-orange: #ff8a00;  /* needs action             */
+  --k-red: #ff2b2b;     /* problem / error          */
+  --mono: ui-monospace, "SF Mono", SFMono-Regular, Menlo, "JetBrains Mono", Consolas, "Liberation Mono", monospace;
+  --fs: 13px;
+  color-scheme: dark;
+}
+/* light "paper terminal", only for Artifacts or when a viewer asks for light */
+@media (prefers-color-scheme: light) { :root:not([data-theme="dark"]) {
+  --bg: #f4f6f1; --fg: #00702c; --fg2: #1d7f42; --dim: #4f7a5c; --line: #9cc2a8; --faint: #e2efe5;
+  --blue: #dbe3ff; --blue-fg: #081a66; --blue-line: #2f56ff;
+  --k-cyan: #007a8a; --k-yellow: #8a6d00; --k-magenta: #b0129a; --k-white: #000000; --k-orange: #c25a00; --k-red: #d0021b;
+  color-scheme: light; } }
+:root[data-theme="light"] {
+  --bg: #f4f6f1; --fg: #00702c; --fg2: #1d7f42; --dim: #4f7a5c; --line: #9cc2a8; --faint: #e2efe5;
+  --blue: #dbe3ff; --blue-fg: #081a66; --blue-line: #2f56ff;
+  --k-cyan: #007a8a; --k-yellow: #8a6d00; --k-magenta: #b0129a; --k-white: #000000; --k-orange: #c25a00; --k-red: #d0021b;
+  color-scheme: light; }
+
+html, body { margin: 0; background: var(--bg); }
+[hidden] { display: none !important; }
+body {
+  color: var(--fg); font-family: var(--mono); font-size: var(--fs); line-height: 1.45;
+  font-variant-numeric: tabular-nums;
+  padding: 0 max(16px, env(safe-area-inset-right, 0px)) 28px max(16px, env(safe-area-inset-left, 0px));
+}
+::selection { background: var(--blue); color: var(--blue-fg); }
+a { color: inherit; text-decoration: none; }
+a:hover { background: var(--blue); color: var(--blue-fg); }
+:focus-visible { outline: 1px solid var(--blue-line); outline-offset: 1px; background: var(--blue); color: var(--blue-fg); }
+
+/* condition classes */
+.k-cyan { color: var(--k-cyan); } .k-yellow { color: var(--k-yellow); } .k-magenta { color: var(--k-magenta); }
+.k-white, b { color: var(--k-white); } b { font-weight: 700; }
+.k-orange { color: var(--k-orange); } .k-red { color: var(--k-red); }
+.k-fg { color: var(--fg); } .k-fg2 { color: var(--fg2); } .k-dim { color: var(--dim); } .k-line { color: var(--line); }
+
+/* rule fills: a long run of ─ or ═ clipped to the space left */
+.fill { flex: 1 1 0; min-width: 1ch; overflow: hidden; white-space: nowrap; }
+.fill::before { content: "────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────"; }
+.dfill::before { content: "════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════"; }
+
+/* ── top tab bar (sticky) ── */
+.nav { position: sticky; top: 0; z-index: 6; background: var(--bg); padding-top: 8px; }
+.nav-row { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 2px; }
+.tab { font: inherit; background: none; border: none; color: var(--fg); padding: 2px 1ch; cursor: pointer; white-space: nowrap; }
+.tab kbd { font: inherit; color: var(--dim); }
+.tab:hover { background: var(--faint); }
+.tab[aria-current="page"] { background: var(--blue); color: var(--blue-fg); font-weight: 700; box-shadow: inset 0 -2px 0 var(--blue-line); }
+.tab[aria-current="page"] kbd { color: var(--k-white); }
+.sp { flex: 1; }
+.mode { color: var(--k-orange); white-space: nowrap; }
+.mode::before { content: "[ "; color: var(--dim); } .mode::after { content: " ]"; color: var(--dim); }
+.rule { display: flex; color: var(--fg2); line-height: 1.2; }
+
+/* ── header: block-letter banner + status ── */
+.wrap { display: grid; gap: 14px; }
+.top { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 6px 3ch; align-items: end; padding-top: 8px; }
+.banner { margin: 0; white-space: pre; line-height: 1.05; font-size: clamp(5px, 1.05vw, 12px); color: var(--fg); }
+.banner .bk { color: var(--dim); }
+.sub { display: grid; gap: 2px; color: var(--dim); min-width: 0; }
+.sub b { color: var(--fg); font-weight: 400; }
+.status { margin: 0; }
+.status .pr { color: var(--dim); }
+.cursor { display: inline-block; width: .6em; height: 1.05em; vertical-align: -2px; background: var(--fg); }
+@media (prefers-reduced-motion: no-preference) { .cursor { animation: blink 1.1s steps(1) infinite; } @keyframes blink { 50% { opacity: 0; } } }
+@media (max-width: 760px) { .top { grid-template-columns: minmax(0, 1fr); } }
+
+/* ── page title rule ── */
+.ptitle { display: flex; white-space: nowrap; overflow: hidden; color: var(--fg2); }
+.ptitle .pt { color: var(--k-white); padding: 0 1ch; font-weight: 700; letter-spacing: .12em; }
+
+/* ── ASCII-framed panels: ┌─┤ $ cmd ├─ note ───┐ … └───┘ ── */
+.panel { position: relative; min-width: 0; display: flex; flex-direction: column; }
+.panel::before { content: ""; position: absolute; left: calc(.5ch - .5px); right: calc(.5ch - .5px); top: .8em; bottom: .8em;
+  border-left: 1px solid var(--line); border-right: 1px solid var(--line); pointer-events: none; }
+.head, .foot { display: flex; white-space: nowrap; color: var(--line); line-height: 1.6; min-width: 0; }
+.head .cmd { color: var(--fg); padding: 0 .5ch; flex: 0 1 auto; overflow: hidden; text-overflow: ellipsis; }
+.head .cmd::before { content: "$ "; color: var(--dim); }
+.head .note { color: var(--dim); padding: 0 .5ch; flex: 0 1000 auto; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+.dbl::before { border-left: 3px double var(--fg2); border-right: 3px double var(--fg2); left: calc(.5ch - 1.5px); right: calc(.5ch - 1.5px); }
+.dbl .head, .dbl .foot { color: var(--fg2); }
+.body { padding: 4px 2ch 6px; min-width: 0; flex: 1 1 auto; }
+.desc { margin: 0 0 8px; color: var(--dim); }
+.desc::before { content: "# "; }
+.txt { white-space: pre; overflow: hidden; }
+.row { display: block; }
+.row:hover { background: var(--blue); }
+.row:hover .k-line, .row:hover .k-dim { color: var(--blue-fg); }
+
+/* ── text controls: [ like this ] — never solid green fills ── */
+.btn, .run, .sz { font: inherit; background: none; border: none; color: var(--fg); padding: 0 .5ch; cursor: pointer; white-space: nowrap; }
+.btn::before, .sz::before { content: "["; color: var(--dim); } .btn::after, .sz::after { content: "]"; color: var(--dim); }
+.btn kbd { font: inherit; color: var(--k-white); }
+.btn:hover, .sz:hover, .run:hover { background: var(--blue); color: var(--blue-fg); }
+.sz[aria-pressed="true"] { background: var(--blue); color: var(--blue-fg); font-weight: 700; }
+.sz[aria-pressed="true"]::before, .sz[aria-pressed="true"]::after { color: var(--blue-fg); }
+.run { font-weight: 700; }
+.run::before { content: "[ "; color: var(--dim); font-weight: 400; } .run::after { content: " ]"; color: var(--dim); font-weight: 400; }
+.writes { color: var(--k-orange); font-size: 11px; margin-left: 1ch; }
+.in, .sel { font: inherit; background-color: var(--bg); color: var(--fg); border: none; border-bottom: 1px solid var(--fg2); padding: 0 .5ch; max-width: 100%; }
+.in { width: 26ch; } .in::placeholder { color: var(--dim); }
+.ctrls { display: flex; flex-wrap: wrap; gap: 4px 2ch; align-items: center; color: var(--dim); }
+.msg { margin: 8px 0 0; min-height: 1.4em; } .msg::before { content: "› "; color: var(--dim); }
+
+/* ── colour key strip ── */
+.key { display: flex; flex-wrap: wrap; gap: 2px 2ch; color: var(--dim); font-size: 12px; }
+.key span { white-space: nowrap; }
+
+/* ── layout grids ── */
+.page { display: grid; gap: 14px; }
+.g12 { display: grid; grid-template-columns: minmax(0, 1fr); gap: 12px 2ch; }
+@media (min-width: 1100px) {
+  .g12 { grid-template-columns: repeat(12, minmax(0, 1fr)); }
+  .c4 { grid-column: span 4; } .c5 { grid-column: span 5; } .c7 { grid-column: span 7; } .c8 { grid-column: span 8; } .c12 { grid-column: span 12; }
+}
+.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, var(--col, 34rem)), 1fr)); gap: 12px 2ch; }
+.wide { grid-column: 1 / -1; }
+.sz-s { --col: 24rem; } .sz-s .txt { font-size: 11px; }
+.sz-m { --col: 34rem; }
+.sz-l { --col: 54rem; } .sz-l .txt { font-size: 14px; }
+
+/* ── stat tiles ── */
+.tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 22ch), 1fr)); gap: 6px 2ch; }
+.tile .body { display: grid; padding-block: 0 2px; }
+.tile .head .cmd { color: var(--dim); font-size: 11px; letter-spacing: .08em; }
+.tile .head .cmd::before { content: none; }
+.num { font-size: 2.1em; line-height: 1.1; color: var(--k-white); font-weight: 700; }
+.cap { color: var(--dim); font-size: 11px; }
+
+/* ── neofetch-style readout ── */
+.sys { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 4px 3ch; align-items: start; }
+.logo { margin: 0; white-space: pre; line-height: 1.1; }
+.kv { display: grid; min-width: 0; }
+.kv .k { color: var(--fg2); display: inline-block; min-width: 12ch; }
+.kv .k::after { content: " :"; color: var(--dim); }
+.hr { color: var(--line); overflow: hidden; white-space: nowrap; }
+@media (max-width: 560px) { .sys { grid-template-columns: minmax(0, 1fr); } .logo { display: none; } }
+
+/* ── command table ── */
+.cmdtbl { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 6px 2ch; align-items: baseline; }
+.cmdtbl code { color: var(--fg); font-family: var(--mono); overflow-wrap: anywhere; }
+.what { display: block; color: var(--dim); font-size: 12px; }
+
+/* ── tables ── */
+.table-box { max-height: 360px; overflow: auto; }
+.table { width: 100%; border-collapse: collapse; }
+.table th { position: sticky; top: 0; background: var(--bg); color: var(--dim); text-align: left; font-weight: 400; font-size: 11px;
+  letter-spacing: .06em; padding: 0 1ch 2px; border-bottom: 1px dashed var(--line); text-transform: uppercase; }
+.table td { padding: 1px 1ch; vertical-align: top; }
+.table td:first-child::before { content: "› "; color: var(--line); }
+.table .n { text-align: right; }
+.table tbody tr:hover { background: var(--blue); color: var(--blue-fg); }
+
+/* ── vertical collapsible tree ── */
+.ft { white-space: pre; line-height: 1.55; }
+.ft summary { list-style: none; cursor: pointer; overflow: hidden; text-overflow: ellipsis; }
+.ft summary::-webkit-details-marker { display: none; }
+.ft summary:hover, .ft .leaf:hover { background: var(--blue); color: var(--blue-fg); }
+.ft .tw::before { content: "▸ "; color: var(--fg2); }
+.ft details[open] > summary .tw::before { content: "▾ "; color: var(--fg); }
+.ft .fn { font-weight: 700; }
+.ft .leaf { display: block; overflow: hidden; text-overflow: ellipsis; }
+</style>
+</head>
+<body>
+
+<nav class="nav" aria-label="Pages">
+  <div class="nav-row">
+    <button class="tab" type="button" data-page="overview" aria-current="page"><kbd>1</kbd> OVERVIEW</button><span class="k-line">│</span>
+    <button class="tab" type="button" data-page="charts"><kbd>2</kbd> CHARTS</button><span class="k-line">│</span>
+    <button class="tab" type="button" data-page="files"><kbd>3</kbd> FILES</button>
+    <span class="sp"></span><span class="mode">DEMO</span>
+  </div>
+  <div class="rule"><span class="fill dfill"></span></div>
+</nav>
+
+<div class="wrap">
+<header class="top">
+<pre class="banner" aria-label="Orbit Console"><span class="bk">  ╔═╗ O R B I T ═══════════════════════════════════════╗</span>
+ ██████╗ ██████╗ ███╗   ██╗███████╗ ██████╗ ██╗     ███████╗
+██╔════╝██╔═══██╗████╗  ██║██╔════╝██╔═══██╗██║     ██╔════╝
+██║     ██║   ██║██╔██╗ ██║███████╗██║   ██║██║     █████╗
+██║     ██║   ██║██║╚██╗██║╚════██║██║   ██║██║     ██╔══╝
+╚██████╗╚██████╔╝██║ ╚████║███████║╚██████╔╝███████╗███████╗
+ ╚═════╝ ╚═════╝ ╚═╝  ╚═══╝╚══════╝ ╚═════╝ ╚══════╝╚══════╝
+<span class="bk">  ╚══════════════════════════════════════ v 2 . 4 ═╝</span></pre>
+  <div class="sub">
+    <span>user <b>demo</b> · source <b>orbit.example</b> · span <b>2019 – 2026</b> · services <b>12</b></span>
+    <span>keys <b>1 2 3</b> pages · <b>R</b> refresh · <b>/</b> search files</span>
+    <p class="status"><span class="pr">root@orbit:~$</span> watch --all <span class="cursor" aria-hidden="true"></span></p>
+  </div>
+</header>
+
+<!-- ═════════════ PAGE 1 ═════════════ -->
+<section class="page" id="overview" aria-label="Overview">
+<div class="ptitle"><span>▓▒░ </span><span class="pt">OVERVIEW</span><span> ░▒▓ </span><span class="fill dfill"></span></div>
+
+<div class="g12">
+<section class="panel dbl c4">
+  <div class="head"><span>╔═╡</span><span class="cmd">neofetch</span><span>╞═</span><span class="note">system readout</span><span class="fill dfill"></span><span>╗</span></div>
+  <div class="body"><div class="sys">
+<pre class="logo" aria-hidden="true">   ▄▄█████▄▄
+ ▄██▀▀   ▀▀██▄
+██▀  ◆   ●  ▀██
+██   ▄▄▄▄▄   ██
+██▄  ▀▀▀▀▀  ▄██
+ ▀██▄▄   ▄▄██▀
+   ▀▀█████▀▀</pre>
+    <div class="kv">
+      <span><b class="k-fg">demo</b>@orbit</span><span class="hr">────────────────────────</span>
+      <span><span class="k">mode</span><b>DEMO</b></span>
+      <span><span class="k">uptime</span>41 days</span>
+      <span><span class="k">services</span><b>12</b> running</span>
+      <span><span class="k">queue</span><span class="k-orange">3 waiting</span></span>
+      <span><span class="k">errors</span><span class="k-red">1 failing</span></span>
+    </div>
+  </div></div>
+  <div class="foot"><span>╚</span><span class="fill dfill"></span><span>╝</span></div>
+</section>
+
+<section class="panel dbl c8">
+  <div class="head"><span>╔═╡</span><span class="cmd">commands</span><span>╞═</span><span class="note">buttons run the line beside them</span><span class="fill dfill"></span><span>╗</span></div>
+  <div class="body">
+    <div class="ctrls" style="margin-bottom:8px"><button class="btn" type="button" data-act="refresh"><kbd>R</kbd> refresh</button><span>queue <span class="k-orange">[3]</span></span></div>
+    <div class="cmdtbl">
+      <button class="run" type="button" data-act="sync">▶ SYNC ALL</button>
+      <span><code>orbit sync --all</code><span class="writes">! changes data after you approve</span><span class="what">pull every service and reconcile the queue</span></span>
+      <button class="run" type="button" data-act="check">▶ CHECK</button>
+      <span><code>orbit check --dry-run</code><span class="what">report problems, change nothing</span></span>
+    </div>
+    <p class="msg k-dim" id="msg" aria-live="polite">ready</p>
+  </div>
+  <div class="foot"><span>╚</span><span class="fill dfill"></span><span>╝</span></div>
+</section>
+
+<div class="c12 tiles" aria-label="Headline stats" id="tiles"></div>
+
+<section class="panel c7">
+  <div class="head"><span>┌─┤</span><span class="cmd">tail -n 6 events.log</span><span>├─</span><span class="note">newest first</span><span class="fill"></span><span>┐</span></div>
+  <div class="body"><div class="table-box"><table class="table">
+    <thead><tr><th>Event</th><th>Service</th><th class="n">ms</th><th>Status</th></tr></thead>
+    <tbody id="events"></tbody>
+  </table></div></div>
+  <div class="foot"><span>└</span><span class="fill"></span><span>┘</span></div>
+</section>
+
+<section class="panel c5">
+  <div class="head"><span>┌─┤</span><span class="cmd">df -h /services</span><span>├─</span><span class="note">share of load</span><span class="fill"></span><span>┐</span></div>
+  <div class="body"><div class="txt" id="load"></div></div>
+  <div class="foot"><span>└</span><span class="fill"></span><span>┘</span></div>
+</section>
+</div>
+</section>
+
+<!-- ═════════════ PAGE 2 ═════════════ -->
+<section class="page" id="charts" aria-label="Charts" hidden>
+<div class="ptitle"><span>▓▒░ </span><span class="pt">CHARTS</span><span> ░▒▓ </span><span class="fill dfill"></span></div>
+<div class="ctrls"><span>$ chart size</span>
+  <button class="sz" type="button" data-size="s" aria-pressed="false">S compact</button>
+  <button class="sz" type="button" data-size="m" aria-pressed="true">M standard</button>
+  <button class="sz" type="button" data-size="l" aria-pressed="false">L large</button></div>
+<div class="key" aria-label="Colour key"><span>key ›</span><span class="k-fg">█ group</span><span class="k-cyan">█ kind</span><span class="k-yellow">█ use</span><span class="k-magenta">█ project</span><span class="k-white">█ totals</span><span class="k-orange">█ needs action</span><span class="k-red">█ problem</span></div>
+<div class="grid sz-m" id="chart-grid">
+  <section class="panel">
+    <div class="head"><span>┌─┤</span><span class="cmd">history --per-year</span><span>├─</span><span class="note">▁▂▃▅▇ sparkline + bars</span><span class="fill"></span><span>┐</span></div>
+    <div class="body"><div class="txt" id="years"></div></div>
+    <div class="foot"><span>└</span><span class="fill"></span><span>┘</span></div>
+  </section>
+  <section class="panel">
+    <div class="head"><span>┌─┤</span><span class="cmd">heatmap --group x --year</span><span>├─</span><span class="note">· ░ ▒ ▓ █ fewer → more</span><span class="fill"></span><span>┐</span></div>
+    <div class="body"><div class="txt" id="heat"></div></div>
+    <div class="foot"><span>└</span><span class="fill"></span><span>┘</span></div>
+  </section>
+  <section class="panel">
+    <div class="head"><span>┌─┤</span><span class="cmd">kinds --waffle</span><span>├─</span><span class="note">100 cells = all items</span><span class="fill"></span><span>┐</span></div>
+    <div class="body"><div class="txt" id="waffle"></div></div>
+    <div class="foot"><span>└</span><span class="fill"></span><span>┘</span></div>
+  </section>
+  <section class="panel">
+    <div class="head"><span>┌─┤</span><span class="cmd">uses --lollipop</span><span>├─</span><span class="note">why it exists</span><span class="fill"></span><span>┐</span></div>
+    <div class="body"><div class="txt" id="lolli"></div></div>
+    <div class="foot"><span>└</span><span class="fill"></span><span>┘</span></div>
+  </section>
+</div>
+</section>
+
+<!-- ═════════════ PAGE 3 ═════════════ -->
+<section class="page" id="files" aria-label="Files" hidden>
+<div class="ptitle"><span>▓▒░ </span><span class="pt">FILES</span><span> ░▒▓ </span><span class="fill dfill"></span></div>
+<section class="panel">
+  <div class="head"><span>┌─┤</span><span class="cmd">tree -L 2</span><span>├─</span><span class="note">click a folder to open or close it</span><span class="fill"></span><span>┐</span></div>
+  <div class="body">
+    <div class="ctrls" style="margin-bottom:10px"><span>$ grep</span><input class="in" id="q" placeholder="type to filter…" aria-label="Filter files">
+      <button class="btn" type="button" data-act="open">expand all</button><button class="btn" type="button" data-act="close">collapse all</button></div>
+    <div class="ft" id="tree"></div>
+  </div>
+  <div class="foot"><span>└</span><span class="fill"></span><span>┘</span></div>
+</section>
+</section>
+</div>
+
+<script>
+// ── made-up example data ──
+const D = {
+  tiles: [['SERVICES', 12, 'running now'], ['REQUESTS', '48.2k', 'last 24 hours'], ['QUEUE', 3, 'waiting', 'k-orange'], ['ERRORS', 1, 'failing', 'k-red'], ['P95', '212', 'ms, all services']],
+  events: [['deploy finished', 'api', 184, 'ok'], ['cache warmed', 'edge', 92, 'ok'], ['job retried', 'worker', 640, 'act'], ['health check', 'db', 18, 'ok'], ['webhook failed', 'billing', 3001, 'bad'], ['config reload', 'api', 41, 'ok']],
+  load: [['api', 34], ['edge', 22], ['worker', 18], ['db', 14], ['billing', 7], ['search', 5]],
+  years: [[2019, 40], [2020, 72], [2021, 95], [2022, 130], [2023, 210], [2024, 188], [2025, 260], [2026, 141]],
+  groups: ['api', 'edge', 'worker', 'db'],
+  kinds: [['service', 38, 'k-cyan'], ['job', 27, 'k-yellow'], ['project', 20, 'k-magenta'], ['other', 15, 'k-fg2']],
+  uses: [['serve', 41], ['store', 26], ['schedule', 18], ['report', 9], ['test', 6]],
+  tree: { 'apps': { 'web': ['index.html', 'app.js', 'styles.css'], 'api': ['server.js', 'routes.js'] }, 'jobs': { 'nightly': ['backup.sh', 'report.py'] }, 'docs': { 'guides': ['setup.md', 'deploy.md'] } },
+};
+const $ = (s) => document.querySelector(s);
+const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const pad = (s, n) => { s = String(s); return s.length > n ? s.slice(0, n - 1) + '…' : s + ' '.repeat(n - s.length); };
+const lpad = (s, n) => ' '.repeat(Math.max(0, n - String(s).length)) + s;
+const bar = (frac, w, cls = 'k-fg', ch = '█') => { const n = Math.round(frac * w); return `<span class="${cls}">${ch.repeat(n)}</span><span class="k-line">${'░'.repeat(w - n)}</span>`; };
+const STATUS = { ok: '<span class="k-fg">[ OK ]</span>', act: '<span class="k-orange">[WAIT]</span>', bad: '<span class="k-red">[FAIL]</span>' };
+
+// tiles: an ASCII card per headline number
+$('#tiles').innerHTML = D.tiles.map(([t, n, c, cls]) => `<div class="panel tile"><div class="head"><span>┌─┤</span><span class="cmd">${t}</span><span>├─</span><span class="fill"></span><span>┐</span></div><div class="body"><span class="num ${cls || ''}">${n}</span><span class="cap">${c}</span></div><div class="foot"><span>└</span><span class="fill"></span><span>┘</span></div></div>`).join('');
+$('#events').innerHTML = D.events.map(([e, s, ms, st]) => `<tr><td>${esc(e)}</td><td class="k-cyan">${s}</td><td class="n ${ms > 1000 ? 'k-red' : ''}">${ms}</td><td>${STATUS[st]}</td></tr>`).join('');
+
+const max = (a, i = 1) => Math.max(...a.map((r) => r[i]));
+const size = () => document.getElementById('chart-grid').classList.contains('sz-s') ? 18 : document.getElementById('chart-grid').classList.contains('sz-l') ? 46 : 30;
+
+function draw() {
+  const W = size();
+  const lm = max(D.load), tot = D.load.reduce((s, r) => s + r[1], 0);
+  $('#load').innerHTML = D.load.map(([n, v]) => `<span class="row">${pad(n, 9)} ${bar(v / lm, 22)} <b>${lpad(v + '%', 4)}</b></span>`).join('') + `<span class="k-line">${'─'.repeat(37)}</span>\n${pad('total', 9)} ${' '.repeat(22)} <b>${lpad(tot + '%', 4)}</b>`;
+
+  const ym = max(D.years), spark = '▁▂▃▄▅▆▇█';
+  $('#years').innerHTML = `<span class="k-dim">trend </span>${D.years.map(([, v]) => spark[Math.min(7, Math.floor(v / ym * 8))]).join('')}\n\n` +
+    D.years.map(([y, v]) => `<span class="row"><span class="k-dim">${y}</span> ${bar(v / ym, W, v === ym ? 'k-white' : 'k-fg', '▇')} <b>${lpad(v, 4)}</b></span>`).join('');
+
+  const shade = ' ·░▒▓█';
+  let h = `<span class="k-dim">${pad('', 8)}${D.years.map(([y]) => String(y).slice(2) + ' ').join('')}</span>\n`;
+  D.groups.forEach((g, gi) => { h += `<span class="row">${pad(g, 8)}${D.years.map(([, v], yi) => { const x = ((v * (gi + 2) + yi * 37) % 100) / 100; return shade[Math.min(5, Math.floor(x * 6))].repeat(2) + ' '; }).join('')}</span>`; });
+  $('#heat').innerHTML = h;
+
+  let cells = []; D.kinds.forEach(([, n, c]) => { for (let i = 0; i < n; i++) cells.push(c); });
+  let wf = ''; for (let r = 0; r < 10; r++) wf += cells.slice(r * 10, r * 10 + 10).map((c) => `<span class="${c}">■</span>`).join(' ') + '\n';
+  $('#waffle').innerHTML = wf + '\n' + D.kinds.map(([n, v, c]) => `<span class="${c}">■</span> ${pad(n, 8)}<b>${lpad(v, 3)}</b>`).join('   ');
+
+  const um = max(D.uses);
+  $('#lolli').innerHTML = D.uses.map(([n, v]) => { const k = Math.round(v / um * W); return `<span class="row"><span class="k-yellow">${pad(n, 9)}</span><span class="k-line">${'─'.repeat(Math.max(0, k - 1))}</span><span class="k-yellow">●</span>${' '.repeat(W - k)} <b>${lpad(v, 3)}</b></span>`; }).join('');
+}
+
+// vertical collapsible tree with <details>
+function drawTree(q = '') {
+  q = q.toLowerCase();
+  const out = Object.entries(D.tree).map(([top, subs]) => {
+    const inner = Object.entries(subs).map(([sub, files], si, arr) => {
+      const last = si === arr.length - 1, br = last ? '└── ' : '├── ', ind = last ? '    ' : '│   ';
+      const hits = files.filter((f) => !q || (top + sub + f).toLowerCase().includes(q));
+      if (!hits.length) return '';
+      return `<details open><summary><span class="k-line">${br}</span><span class="tw"></span><span class="fn">${sub}/</span> <span class="k-dim">${hits.length}</span></summary>` +
+        hits.map((f, fi) => `<span class="leaf"><span class="k-line">${ind}${fi === hits.length - 1 ? '└── ' : '├── '}</span>${esc(f)}</span>`).join('') + '</details>';
+    }).join('');
+    return inner ? `<details open><summary><span class="tw"></span><span class="fn">${top}/</span></summary>${inner}</details>` : '';
+  }).join('');
+  $('#tree').innerHTML = out || '<span class="k-dim"># no match</span>';
+}
+
+// pages + keys
+const PAGES = ['overview', 'charts', 'files'];
+function show(id) {
+  document.querySelectorAll('.page').forEach((p) => { p.hidden = p.id !== id; });
+  document.querySelectorAll('.tab').forEach((b) => b.dataset.page === id ? b.setAttribute('aria-current', 'page') : b.removeAttribute('aria-current'));
+  try { localStorage.setItem('tp-page', id); } catch (e) {}
+}
+document.querySelectorAll('.tab').forEach((b) => b.addEventListener('click', () => { show(b.dataset.page); scrollTo(0, 0); }));
+document.querySelectorAll('.sz').forEach((b) => b.addEventListener('click', () => {
+  const g = $('#chart-grid'); g.classList.remove('sz-s', 'sz-m', 'sz-l'); g.classList.add('sz-' + b.dataset.size);
+  document.querySelectorAll('.sz').forEach((x) => x.setAttribute('aria-pressed', String(x === b))); draw();
+}));
+document.addEventListener('click', (e) => {
+  const a = e.target.closest('[data-act]'); if (!a) return;
+  const act = a.dataset.act;
+  if (act === 'open' || act === 'close') document.querySelectorAll('#tree details').forEach((d) => { d.open = act === 'open'; });
+  else $('#msg').textContent = act === 'refresh' ? 're-read every source · demo data, nothing changed' : `would run: orbit ${act} · demo only`;
+});
+$('#q').addEventListener('input', (e) => drawTree(e.target.value));
+document.addEventListener('keydown', (e) => {
+  if (e.metaKey || e.ctrlKey || e.altKey || /^(INPUT|SELECT|TEXTAREA)$/.test(e.target.tagName)) return;
+  const i = ['1', '2', '3'].indexOf(e.key); if (i >= 0) return show(PAGES[i]);
+  if (e.key === 'r' || e.key === 'R') return $('#msg').textContent = 're-read every source · demo data, nothing changed';
+  if (e.key === '/') { e.preventDefault(); show('files'); $('#q').focus(); }
+});
+
+draw(); drawTree();
+let saved = null; try { saved = localStorage.getItem('tp-page'); } catch (e) {}
+show(PAGES.includes(saved) ? saved : 'overview');
+</script>
+</body>
+</html>

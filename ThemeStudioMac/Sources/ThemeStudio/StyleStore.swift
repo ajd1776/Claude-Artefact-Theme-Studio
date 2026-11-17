@@ -56,3 +56,67 @@ func jsonLiteral(_ value: Any) -> String {
           let text = String(data: data, encoding: .utf8) else { return "null" }
     return text
 }
+
+/// Writes a style into the terminal-preview skill so it becomes the look Claude uses for artifacts.
+/// The page builds the files (it has the renderer); this only checks, backs up and writes them.
+enum DefaultTheme {
+    static let skillDir = FileManager.default.homeDirectoryForCurrentUser
+        .appendingPathComponent(".claude/skills/terminal-preview", isDirectory: true)
+    static var referenceURL: URL { skillDir.appendingPathComponent("reference.html") }
+    static var skillURL: URL { skillDir.appendingPathComponent("SKILL.md") }
+    private static var recordURL: URL {
+        StyleStore.shared.folder.deletingLastPathComponent().appendingPathComponent("default.json")
+    }
+    static let begin = "<!-- theme-studio:begin"
+    static let end = "<!-- theme-studio:end -->"
+
+    struct Failure: LocalizedError {
+        let message: String
+        var errorDescription: String? { message }
+    }
+
+    /// The box-drawing reference page every default theme is generated from.
+    static func templateText() -> String {
+        guard let url = Bundle.main.url(forResource: "reference-template", withExtension: "html"),
+              let text = try? String(contentsOf: url, encoding: .utf8) else { return "" }
+        return text
+    }
+
+    /// The id of the style last set as default, if any.
+    static func currentID() -> String? {
+        guard let data = try? Data(contentsOf: recordURL),
+              let record = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else { return nil }
+        return record["id"] as? String
+    }
+
+    static func apply(id: String, name: String, reference: String, skillBlock: String) throws {
+        let fm = FileManager.default
+        guard fm.fileExists(atPath: skillURL.path) else {
+            throw Failure(message: "Couldn't find the terminal-preview skill in ~/.claude/skills/terminal-preview, so nothing was changed.")
+        }
+        guard reference.contains("<style>"), reference.contains("--k-white"),
+              skillBlock.hasPrefix(begin), skillBlock.hasSuffix(end) else {
+            throw Failure(message: "The generated theme files looked incomplete, so nothing was changed.")
+        }
+        let skill = try String(contentsOf: skillURL, encoding: .utf8)
+        guard let b = skill.range(of: begin), let e = skill.range(of: end), b.lowerBound < e.lowerBound else {
+            throw Failure(message: "SKILL.md has no Current style section for Theme Studio to replace, so nothing was changed.")
+        }
+        let updatedSkill = skill.replacingCharacters(in: b.lowerBound..<e.upperBound, with: skillBlock)
+
+        // Keep one step of history next to the live files.
+        let previousReference = skillDir.appendingPathComponent("reference.previous.html")
+        let previousSkill = skillDir.appendingPathComponent("SKILL.previous.md")
+        if fm.fileExists(atPath: referenceURL.path) {
+            try? fm.removeItem(at: previousReference)
+            try fm.copyItem(at: referenceURL, to: previousReference)
+        }
+        try? fm.removeItem(at: previousSkill)
+        try fm.copyItem(at: skillURL, to: previousSkill)
+
+        try reference.write(to: referenceURL, atomically: true, encoding: .utf8)
+        try updatedSkill.write(to: skillURL, atomically: true, encoding: .utf8)
+        let record: [String: Any] = ["id": id, "name": name, "setAt": Int(Date().timeIntervalSince1970 * 1000)]
+        try? jsonLiteral(record).write(to: recordURL, atomically: true, encoding: .utf8)
+    }
+}

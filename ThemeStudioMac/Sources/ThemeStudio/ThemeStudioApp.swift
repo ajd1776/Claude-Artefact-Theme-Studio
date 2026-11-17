@@ -79,6 +79,11 @@ struct StudioCommands: Commands {
             Button("Pop Out Preview") { Bridge.run("TS.popOut()") }
                 .keyboardShortcut("p", modifiers: [.command, .shift])
             Divider()
+            Button("Set as Default Artifact Theme…") { Bridge.run("TS.setDefault()") }
+            Button("Show Default Theme Files in Finder") {
+                NSWorkspace.shared.activateFileViewerSelecting([DefaultTheme.referenceURL])
+            }
+            Divider()
             Button("Dark Palette") { Bridge.run("TS.setVariant('dark')") }
                 .keyboardShortcut("1")
             Button("Light Palette") { Bridge.run("TS.setVariant('light')") }

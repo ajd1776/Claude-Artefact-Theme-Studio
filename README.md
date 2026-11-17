@@ -23,6 +23,7 @@
 - [Using it](#using-it)
 - [Where styles are saved](#where-styles-are-saved)
 - [Exporting](#exporting)
+- [Setting the default artifact theme](#setting-the-default-artifact-theme)
 - [How it works](#how-it-works)
 - [Project layout](#project-layout)
 - [Regenerating the screenshots](#regenerating-the-screenshots)
@@ -51,6 +52,10 @@ A look like that lives or dies on small decisions. Is the dim green readable? Do
 **Pop out**
 - Any style opens in its own native window. Move it to another display, tile it next to the editor, or take it full screen.
 - Pop-out windows redraw live as you edit, and each has its own Dark / Light switch.
+
+**Set the default artifact theme**
+- **Set as Default Theme…** makes any saved style the look Claude uses for the pages and artifacts it builds. It rewrites the `terminal-preview` skill's `reference.html` and the **Current style** section of its `SKILL.md`, after a confirmation sheet.
+- The previous files are kept as `reference.previous.html` and `SKILL.previous.md`, and the sidebar marks the current default.
 
 **Save and export**
 - Four built-in presets stay read-only. Edit one and choose Save As… to keep your version.
@@ -128,6 +133,7 @@ The page also runs in any browser. Open `ThemeStudioMac/build/Theme Studio.app/C
 | New style from the selected one | ⌘D |
 | Export tokens | ⌘E |
 | Pop out the preview | ⇧⌘P, or P |
+| Set as default artifact theme | Style › Set as Default Artifact Theme… |
 | Dark palette / Light palette | ⌘1 / ⌘2 |
 | Edit view / Compare view | ⌥⌘1 / ⌥⌘2 |
 | Close a sheet or the sidebar overlay | Esc |
@@ -185,6 +191,18 @@ The CSS export is dark-first and matches the theme's reference stylesheet, so it
 :root[data-theme="light"] { /* light tokens */ }
 ```
 
+## Setting the default artifact theme
+
+Claude builds pages for you with the `terminal-preview` skill in `~/.claude/skills/terminal-preview/`. Theme Studio can point that skill at any style:
+
+1. Save the style (unsaved edits can't be set as default).
+2. Choose **Set as Default…** in the inspector, or **Style › Set as Default Artifact Theme…**.
+3. Confirm. The app writes two files:
+   - `reference.html`, generated from the box-drawing template in [`ThemeStudioMac/Resources/reference-template.html`](ThemeStudioMac/Resources/reference-template.html) with the style's colours, typeface, size, line height, frame characters, key-panel lines and cursor.
+   - The section of `SKILL.md` between `<!-- theme-studio:begin -->` and `<!-- theme-studio:end -->`, with the colour table, type and frame notes. The rest of `SKILL.md` is left alone.
+
+The block letters of the banner always keep their own shapes. If `SKILL.md` has no Theme Studio section, nothing is written and the app says so. **Style › Show Default Theme Files in Finder** opens the skill folder.
+
 ## How it works
 
 The interface is one HTML page, [`theme-studio.html`](theme-studio.html), with no dependencies beyond Google Fonts. The Mac app is a small SwiftUI shell that shows that page in a `WKWebView` and gives it native powers through a message bridge.
@@ -221,6 +239,7 @@ flowchart LR
   | `title` `{text}` | Sets the window title or subtitle |
   | `copy` `{text}` | Puts text on the clipboard |
   | `saveFile` `{name, text}` | Shows a Save panel and writes the file |
+  | `setDefault` `{id, name, reference, skill}` | Confirms, backs up and writes the skill's `reference.html` and Current style section |
 
 - **App to page.** Menu commands call `window.TS` (`save`, `duplicate`, `revert`, `openExport`, `popOut`, `setVariant`, `setMode`). Preview windows receive `window.TS_live(styles)` whenever the editor changes anything.
 - **Outside the app** the same page detects that there is no bridge and falls back to browser storage, with an in-page pop-out overlay instead of a native window.
@@ -236,6 +255,7 @@ theme-studio/
 │   │   ├── ThemeStudioApp.swift   app, windows, menu commands
 │   │   ├── StudioWebView.swift    WKWebView host and message bridge
 │   │   └── StyleStore.swift       JSON files on disk, live state for pop-outs
+│   ├── Resources/reference-template.html   template for the default artifact theme
 │   ├── Info.plist
 │   ├── make-icon.swift        draws the app icon
 │   └── build.sh               builds "Theme Studio.app" into ThemeStudioMac/build

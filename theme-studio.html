@@ -177,6 +177,8 @@ dialog.sheet::backdrop { background: rgba(0,0,0,.28); }
   border-radius: 10px; padding: 8px 14px; font-weight: 500; transition: opacity .2s, transform .2s; max-width: calc(100vw - 32px); z-index: 50; }
 .hud.show { opacity: 1; transform: translate(-50%, 0); }
 .scrim { display: none; }
+.pill-def { font-size: 10px; font-weight: 600; padding: 1px 6px; border-radius: 4px; background: var(--fill); color: var(--label2); }
+.srow.on .pill-def { background: rgba(255,255,255,.22); color: var(--on-accent); }
 
 /* ── pop-out preview: the terminal fills the whole window, with a floating control bar ── */
 .popout { position: fixed; inset: 0; z-index: 40; display: flex; flex-direction: column; background: var(--canvas); }
@@ -452,6 +454,7 @@ const ICON = {
 /* native Mac app bridge (absent in the browser) */
 const NATIVE = window.__TS_NATIVE || null;
 const PREVIEW = NATIVE?.mode === 'preview';
+const NATIVE_DEFAULT = NATIVE?.defaultId || null;
 const post = msg => { try { window.webkit.messageHandlers.studio.postMessage(msg); } catch {} };
 if (NATIVE) document.documentElement.classList.add('native');
 
@@ -460,6 +463,7 @@ const ui = ls.get('ts.ui', {});
 const S = {
   user: {}, drafts: ls.get('ts.drafts', {}), store: 'loading',
   sel: ui.sel || 'p_bookmark', mode: ui.mode === 'compare' ? 'compare' : 'edit', variant: ui.variant === 'light' ? 'light' : 'dark',
+  defaultId: NATIVE_DEFAULT,
   cmp: Array.isArray(ui.cmp) ? ui.cmp : ['p_bookmark', 'p_amber', 'p_ice'], cmpN: ui.cmpN === 3 ? 3 : 2, showAll: false, q: '', exFmt: 'css',
 };
 for (const id in S.drafts) S.drafts[id] = normalize({ ...S.drafts[id], id });
@@ -548,7 +552,7 @@ const swatch = (st, lg) => { const p = st[S.variant]; return `<span class="sw${l
 
 function renderSidebar() {
   const q = S.q.trim().toLowerCase(), match = st => !q || st.name.toLowerCase().includes(q);
-  const row = id => { const st = cur(id); return `<button class="srow${id === S.sel ? ' on' : ''}" data-id="${id}" aria-current="${id === S.sel}">${swatch(st)}<span class="sn">${esc(st.name)}</span>${isDirty(id) ? '<span class="dot" title="Unsaved changes" aria-label="Unsaved changes"></span>' : ''}${isPreset(id) ? ICON.lock : ''}</button>`; };
+  const row = id => { const st = cur(id); return `<button class="srow${id === S.sel ? ' on' : ''}" data-id="${id}" aria-current="${id === S.sel}">${swatch(st)}<span class="sn">${esc(st.name)}</span>${isDirty(id) ? '<span class="dot" title="Unsaved changes" aria-label="Unsaved changes"></span>' : ''}${S.defaultId === id ? '<span class="pill-def" title="Default artifact theme">Default</span>' : ''}${isPreset(id) ? ICON.lock : ''}</button>`; };
   const pre = PRESETS.filter(p => match(cur(p.id))).map(p => row(p.id)).join('');
   const users = Object.values(S.user).sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0));
   let mine;
@@ -622,7 +626,7 @@ function renderInspector() {
       <button class="btn" id="a-revert" ${isDirty(S.sel) ? '' : 'disabled'}>Revert changes</button>
       <button class="btn" id="a-dup">Duplicate</button>
       ${pre ? '' : '<button class="btn danger" id="a-del">Delete…</button>'}
-    </div></section>`;
+    </div>${NATIVE && !PREVIEW ? `<div class="card" style="margin-top:6px"><div class="frow"><div class="lbl"><span>Default artifact theme</span><span class="note" style="padding:0">${S.defaultId === S.sel ? 'This style is what Claude uses for pages it builds you.' : 'Make this the look Claude uses for pages it builds you.'}</span></div><button class="btn${S.defaultId === S.sel ? '' : ' primary'}" id="a-default">${S.defaultId === S.sel ? 'Apply Again' : 'Set as Default…'}</button></div></div>` : ''}</section>`;
 }
 
 function renderCompare() {
@@ -786,6 +790,88 @@ $('#ex-copy').onclick = () => {
   try { navigator.clipboard.writeText(text).then(() => hud('Copied'), fallback); } catch { fallback(); }
 };
 
+/* ── default theme generator: turns a style into the terminal-preview skill's files ── */
+const ROLE = {
+  bg: 'page background', fg: 'body text, folders/groups, OK states', fg2: 'secondary text, keys in key/value rows, double-line frames',
+  dim: 'hints, `#` comments, `$` prompts, captions, `[ ]` brackets', line: 'single-line frames, tree branches, empty bar track `░`',
+  faint: 'hover tint on tabs only', cyan: 'condition: a kind / type', yellow: 'condition: a purpose / use', magenta: 'condition: a project / owner',
+  white: 'totals and headline numbers (`<b>`)', orange: 'needs action (waiting, thin, "changes data")', red: 'problem (error, empty, failed)',
+};
+const VBAR = { single: '│', rounded: '│', heavy: '┃', double: '║', ascii: '|' };
+function frameSets(st) {
+  const bx = BOX[st.box], dset = st.box === 'ascii' ? DBL.ascii : DBL.std;
+  const base = st.box === 'double' ? dset : bx.c;
+  return { bx, base, dbl: st.dblKey ? dset : base, v: VBAR[st.box], rule: st.box === 'ascii' ? '=' : '═' };
+}
+// The template is the box-drawing reference page (single ┌─┐ frames, double ╔═╗ key panels).
+function buildReference(tpl, st) {
+  const { bx, base, dbl, v, rule } = frameSets(st), ascii = st.box === 'ascii';
+  let s = tpl;
+  const setTok = (txt, p) => txt.replace(/(--[a-z0-9-]+):(\s*)#[0-9a-fA-F]{6}/g, (m, n, sp) => { const t = TOK.find(x => x[1] === n); return t ? `${n}:${sp}${p[t[0]]}` : m; });
+  const iL = s.indexOf('@media (prefers-color-scheme: light)'), iE = s.indexOf('\nhtml, body');
+  if (iL < 0 || iE < iL) throw new Error('the reference template has changed shape');
+  s = setTok(s.slice(0, iL), st.dark) + setTok(s.slice(iL, iE), st.light) + s.slice(iE);
+  s = s.replace(/--mono: [^;]*;/, `--mono: ${FONTS[st.font].stack};`).replace(/--fs: [^;]*;/, `--fs: ${st.size}px;`)
+       .replace('font-size: var(--fs); line-height: 1.45;', `font-size: var(--fs); line-height: ${st.lh};`)
+       .replace('left: calc(.5ch - .5px); right: calc(.5ch - .5px);', `left: calc(.5ch - ${bx.w / 2}px); right: calc(.5ch - ${bx.w / 2}px);`)
+       .replace('border-left: 1px solid var(--line); border-right: 1px solid var(--line);', `border-left: ${bx.w}px ${bx.s} var(--line); border-right: ${bx.w}px ${bx.s} var(--line);`)
+       .replace('<style>', `<style>\n/* Theme: ${st.name}, set from Theme Studio on ${new Date().toISOString().slice(0, 10)} */`);
+  if (!st.blink) s = s.replace(/@media \(prefers-reduced-motion: no-preference\) \{ \.cursor \{ animation:[^\n]*/, '/* steady cursor: this style does not blink */');
+  if (!st.dblKey) s = s.replace(/class="panel dbl/g, 'class="panel');
+  const M = { '┌': base[0], '─': base[1], '┤': base[2], '├': base[3], '┐': base[4], '└': base[5], '┘': base[6], '│': v, '║': v };
+  const D = { '╔': dbl[0], '═': dbl[1], '╡': dbl[2], '╞': dbl[3], '╗': dbl[4], '╚': dbl[5], '╝': dbl[6] };
+  let inBanner = false;
+  return s.split('\n').map(ln => {
+    const opens = ln.includes('<pre class="banner"'); if (opens) inBanner = true;
+    const bk = ln.includes('class="bk"'), letters = inBanner && !bk;
+    if (inBanner && ln.includes('</pre>')) inBanner = false;
+    if (letters) return ln;                                       // block letters keep their own shapes
+    if (bk) return ascii ? ln.replace(/[╔╗╚╝]/g, '+').replace(/═/g, '=') : ln;
+    const panelRow = /class="(head|foot)"/.test(ln);
+    let x = ln;
+    if (!st.dblKey && panelRow) x = x.replace(/fill dfill/g, 'fill');
+    x = x.replace(/├── /g, bx.tree[0]).replace(/└── /g, bx.tree[1]).replace(/│   /g, bx.tree[2]);
+    return [...x].map(c => M[c] ?? (c === '═' && !panelRow ? rule : D[c]) ?? c).join('');
+  }).join('\n');
+}
+function skillBlock(st) {
+  const { bx, base, dbl, v, rule } = frameSets(st), c = base, d = dbl, h = n => c[1].repeat(n);
+  const row = k => { const t = TOK.find(x => x[0] === k); return `| \`${t[1]}\` | \`${st.dark[k]}\` | \`${st.light[k]}\` | ${ROLE[k]} |`; };
+  const font = FONTS[st.font];
+  return `<!-- theme-studio:begin (written by Theme Studio's "Set as Default Theme"; change the style there rather than editing by hand) -->
+## Current style: ${st.name}
+
+Set from Theme Studio on ${new Date().toISOString().slice(0, 10)}.${st.notes ? ' ' + st.notes.replace(/\s+/g, ' ') : ''}
+
+| Token | Dark | Light | Use, and nothing else |
+|---|---|---|---|
+${['bg', 'fg', 'fg2', 'dim', 'line', 'faint'].map(row).join('\n')}
+| \`--blue\` / \`--blue-fg\` / \`--blue-line\` | \`${st.dark.blue}\` / \`${st.dark.blueFg}\` / \`${st.dark.blueLine}\` | \`${st.light.blue}\` / \`${st.light.blueFg}\` / \`${st.light.blueLine}\` | **highlight and selection only**: active tab, hover rows, pressed buttons, focus, tooltips, \`::selection\` |
+${['cyan', 'yellow', 'magenta', 'white', 'orange', 'red'].map(row).join('\n')}
+
+The token names are fixed slots so pages and helpers never change; only their values follow the style. \`--k-white\` is the totals colour whatever its value.
+
+- **Type:** ${font.label} (\`${font.stack}\`), ${st.size}px, line height ${st.lh}.
+- **Frames:** ${bx.label}. Panel head \`${c[0]}${c[1]}${c[2]} $ cmd ${c[3]}${c[1]} note ${h(3)}${c[4]}\`, foot \`${c[5]}${h(3)}${c[6]}\`, side borders ${bx.w}px ${bx.s}. ${st.dblKey ? `Key panels (readout, commands) use \`${d[0]}${d[1]}${d[2]} cmd ${d[3]}${d[1]} … ${d[4]}\` with the \`.dbl\` class.` : 'Key panels use the same frame as every other panel (no `.dbl`).'}
+- **Lines:** tab separator \`${v}\`, full-width rules \`${rule.repeat(4)}\`, tree branches \`\` ${bx.tree.map(t => t.trim()).join(' ')} \`\`. Banner block letters keep their own \`█╗ ╔═╝\` shapes.
+- **Cursor:** ${st.blink ? 'blinking (respect `prefers-reduced-motion`)' : 'steady, no blink'}.
+- **Titles:** ${st.upper ? 'UPPERCASE page titles, tile labels and run buttons' : 'titles as written, not uppercased'}.
+<!-- theme-studio:end -->`;
+}
+function setAsDefault() {
+  if (!NATIVE || PREVIEW) return hud('Setting the default theme needs the Theme Studio Mac app.', 3000);
+  if (!NATIVE.template) return hud('The reference template is missing from the app. Rebuild it with build.sh.', 3600);
+  if (isDirty(S.sel)) return hud('Save your changes first, then set this style as the default.', 3200);
+  const st = cur();
+  try { post({ type: 'setDefault', id: S.sel, name: st.name, reference: buildReference(NATIVE.template, st), skill: skillBlock(st) }); }
+  catch (e) { hud(`Couldn't build the theme files (${e.message}).`, 4000); }
+}
+window.TS_defaultSet = r => {
+  if (r && r.ok) { S.defaultId = r.id; hud(`“${cur(r.id)?.name || 'Style'}” is now the default artifact theme`, 2800); refreshAll(); }
+  else if (r && r.message) hud(r.message, 4200);
+};
+/* ── end generator ── */
+
 /* pop-out preview */
 let popId = null, popOpener = null;
 function renderPop() {
@@ -857,6 +943,7 @@ insp.addEventListener('click', e => {
   if (e.target.closest('#a-revert')) return revert();
   if (e.target.closest('#a-dup')) return duplicate();
   if (e.target.closest('#a-del')) return askDelete();
+  if (e.target.closest('#a-default')) return setAsDefault();
 });
 const cmp = $('#v-cmp');
 cmp.addEventListener('change', e => { const t = e.target; if (t.matches('select[data-i]')) { S.cmp[+t.dataset.i] = t.value; saveUI(); renderCompare(); } });
@@ -879,7 +966,7 @@ document.addEventListener('keydown', e => {
 setInterval(() => { if (S.mode === 'edit' && !isDirty(S.sel)) renderToolbar(); }, 30000);
 
 window.TS = {
-  save, duplicate, revert, openExport,
+  save, duplicate, revert, openExport, setDefault: setAsDefault,
   popOut: () => openPop(S.mode === 'compare' ? S.cmp[0] : S.sel),
   setVariant: v => { S.variant = v === 'light' ? 'light' : 'dark'; refreshAll(); },
   setMode: m => { S.mode = m === 'compare' ? 'compare' : 'edit'; if (S.mode === 'compare' && !S.cmp.includes(S.sel)) S.cmp[0] = S.sel; refreshAll(); },

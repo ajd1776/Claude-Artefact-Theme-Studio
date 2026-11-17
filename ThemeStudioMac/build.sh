@@ -16,6 +16,7 @@ rm -rf "$APP"
 mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
 cp .build/release/ThemeStudio "$APP/Contents/MacOS/ThemeStudio"
 cp Info.plist "$APP/Contents/Info.plist"
+cp Resources/reference-template.html "$APP/Contents/Resources/reference-template.html"
 
 # The page is written without a document skeleton (the Artifact host adds one), so add it here.
 {

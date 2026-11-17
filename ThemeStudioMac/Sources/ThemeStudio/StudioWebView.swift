@@ -83,7 +83,10 @@ final class WebCoordinator: NSObject, WKScriptMessageHandler, WKNavigationDelega
     private func bootScript() -> String {
         switch role {
         case .main:
-            return "window.__TS_NATIVE = { mode: 'main', styles: \(store.savedStylesJSON()) };"
+            return """
+            window.__TS_NATIVE = { mode: 'main', styles: \(store.savedStylesJSON()),
+              template: \(jsonLiteral(DefaultTheme.templateText())), defaultId: \(jsonLiteral(DefaultTheme.currentID() ?? NSNull())) };
+            """
         case .preview(let id):
             return """
             window.__TS_NATIVE = { mode: 'preview', previewId: \(jsonLiteral(id)), variant: \(jsonLiteral(store.variant)),
@@ -114,11 +117,42 @@ final class WebCoordinator: NSObject, WKScriptMessageHandler, WKNavigationDelega
                 NSPasteboard.general.clearContents()
                 NSPasteboard.general.setString(text, forType: .string)
             }
+        case "setDefault":
+            if let id = body["id"] as? String, let name = body["name"] as? String,
+               let reference = body["reference"] as? String, let skill = body["skill"] as? String {
+                confirmSetDefault(id: id, name: name, reference: reference, skill: skill)
+            }
         case "saveFile":
             if let text = body["text"] as? String { saveFile(name: body["name"] as? String ?? "theme.css", text: text) }
         default:
             break
         }
+    }
+
+    private func confirmSetDefault(id: String, name: String, reference: String, skill: String) {
+        let alert = NSAlert()
+        alert.messageText = "Make “\(name)” your default artifact theme?"
+        alert.informativeText = "Claude will use it for the pages and artifacts it builds for you from now on. This rewrites reference.html and the Current style section of SKILL.md in ~/.claude/skills/terminal-preview. The versions there now are kept as reference.previous.html and SKILL.previous.md."
+        alert.addButton(withTitle: "Set as Default")
+        alert.addButton(withTitle: "Cancel")
+        let handle: (NSApplication.ModalResponse) -> Void = { [weak self] response in
+            guard response == .alertFirstButtonReturn else { return }
+            do {
+                try DefaultTheme.apply(id: id, name: name, reference: reference, skillBlock: skill)
+                self?.reply(["ok": true, "id": id])
+            } catch {
+                self?.reply(["ok": false, "message": error.localizedDescription])
+            }
+        }
+        if let window = webView?.window {
+            alert.beginSheetModal(for: window, completionHandler: handle)
+        } else {
+            handle(alert.runModal())
+        }
+    }
+
+    private func reply(_ result: [String: Any]) {
+        webView?.evaluateJavaScript("window.TS_defaultSet && window.TS_defaultSet(\(jsonLiteral(result)))", completionHandler: nil)
     }
 
     private func saveFile(name: String, text: String) {
