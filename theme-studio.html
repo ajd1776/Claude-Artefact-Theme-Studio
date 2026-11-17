@@ -1,0 +1,912 @@
+<title>Theme Studio</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;700&family=IBM+Plex+Mono:wght@400;700&family=Fira+Code:wght@400;700&family=Space+Mono:wght@400;700&display=swap">
+<style>
+/* Layout: a single macOS-style window — source-list sidebar | toolbar over (live preview stage | grouped inspector).
+   App chrome follows the viewer's system appearance; the terminal preview has its own Dark / Light switch. */
+:root {
+  --desk: #dcdde3; --win: #ffffff; --side: #eeeef2; --toolbar: #f7f7f9; --insp: #f4f4f7; --card: #ffffff;
+  --canvas: #e9e9ee; --control: #ffffff; --seg-on: #ffffff;
+  --label: rgba(0,0,0,.88); --label2: rgba(0,0,0,.55); --label3: rgba(0,0,0,.28);
+  --sep: rgba(0,0,0,.11); --fill: rgba(120,120,128,.12); --fill2: rgba(120,120,128,.2);
+  --accent: #007aff; --on-accent: #ffffff; --red: #ff3b30; --green: #28a745; --orange: #f08c00;
+  --shadow: 0 0 0 .5px rgba(0,0,0,.14), 0 18px 48px rgba(0,0,0,.16), 0 2px 6px rgba(0,0,0,.06);
+  --ctl-shadow: 0 0 0 .5px rgba(0,0,0,.16), 0 1px 1.5px rgba(0,0,0,.08);
+  --sys: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Inter", "Helvetica Neue", system-ui, sans-serif;
+  --mono: ui-monospace, "SF Mono", SFMono-Regular, Menlo, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --desk: #0d0d0f; --win: #1e1e20; --side: #252528; --toolbar: #29292c; --insp: #1c1c1e; --card: #2c2c2e;
+  --canvas: #141416; --control: #3a3a3c; --seg-on: #636366;
+  --label: rgba(255,255,255,.88); --label2: rgba(255,255,255,.55); --label3: rgba(255,255,255,.28);
+  --sep: rgba(255,255,255,.1); --fill: rgba(120,120,128,.24); --fill2: rgba(120,120,128,.36);
+  --accent: #0a84ff; --on-accent: #ffffff; --red: #ff453a; --green: #30d158; --orange: #ff9f0a;
+  --shadow: 0 0 0 .5px rgba(255,255,255,.12), 0 18px 48px rgba(0,0,0,.6);
+  --ctl-shadow: 0 0 0 .5px rgba(255,255,255,.08), 0 1px 1.5px rgba(0,0,0,.3);
+  color-scheme: dark; } }
+:root[data-theme="dark"] {
+  --desk: #0d0d0f; --win: #1e1e20; --side: #252528; --toolbar: #29292c; --insp: #1c1c1e; --card: #2c2c2e;
+  --canvas: #141416; --control: #3a3a3c; --seg-on: #636366;
+  --label: rgba(255,255,255,.88); --label2: rgba(255,255,255,.55); --label3: rgba(255,255,255,.28);
+  --sep: rgba(255,255,255,.1); --fill: rgba(120,120,128,.24); --fill2: rgba(120,120,128,.36);
+  --accent: #0a84ff; --on-accent: #ffffff; --red: #ff453a; --green: #30d158; --orange: #ff9f0a;
+  --shadow: 0 0 0 .5px rgba(255,255,255,.12), 0 18px 48px rgba(0,0,0,.6);
+  --ctl-shadow: 0 0 0 .5px rgba(255,255,255,.08), 0 1px 1.5px rgba(0,0,0,.3);
+  color-scheme: dark; }
+
+html, body { height: 100%; }
+body { background: var(--desk); color: var(--label); font: 13px/1.38 var(--sys); -webkit-font-smoothing: antialiased;
+  box-sizing: border-box; padding-block: 16px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+*, *::before, *::after { box-sizing: border-box; }
+button, input, select, textarea { font: inherit; color: inherit; }
+:focus-visible { outline: 3px solid color-mix(in srgb, var(--accent) 55%, transparent); outline-offset: 1px; border-radius: 6px; }
+svg.i { width: 16px; height: 16px; flex: none; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
+
+/* ── window ── */
+.win { position: relative; height: 100%; display: grid; grid-template-columns: 236px minmax(0, 1fr); background: var(--win);
+  border-radius: 12px; overflow: hidden; box-shadow: var(--shadow); }
+
+/* ── sidebar (source list) ── */
+.side { background: var(--side); border-right: .5px solid var(--sep); display: flex; flex-direction: column; min-height: 0; z-index: 20; }
+.side-top { padding: 14px 10px 8px; display: grid; gap: 10px; }
+.app-name { font-weight: 600; font-size: 13px; padding: 0 6px; display: flex; align-items: center; gap: 8px; }
+.app-name .glyph { width: 22px; height: 22px; border-radius: 6px; background: #000; color: #00e35a; font: 700 10px/22px var(--mono); text-align: center; letter-spacing: -.5px; }
+.search { display: flex; align-items: center; gap: 6px; background: var(--fill); border-radius: 7px; padding: 4px 8px; color: var(--label2); }
+.search input { border: 0; background: none; outline: none; min-width: 0; flex: 1; color: var(--label); }
+.search input::placeholder { color: var(--label3); }
+.search:focus-within { box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 45%, transparent); }
+.slist { flex: 1; overflow: auto; padding: 0 10px 10px; }
+.sh { font-size: 11px; font-weight: 600; color: var(--label2); padding: 12px 8px 4px; display: flex; justify-content: space-between; }
+.srow { width: 100%; display: flex; align-items: center; gap: 8px; border: 0; background: none; text-align: left; padding: 5px 8px; border-radius: 6px; cursor: default; }
+.srow:hover { background: var(--fill); }
+.srow.on { background: var(--accent); color: var(--on-accent); }
+.srow .sn { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.srow .lock { color: var(--label3); } .srow.on .lock { color: color-mix(in srgb, var(--on-accent) 70%, transparent); }
+.dot { width: 7px; height: 7px; border-radius: 50%; background: var(--label2); flex: none; }
+.srow.on .dot { background: var(--on-accent); }
+.sw { width: 20px; height: 20px; border-radius: 5px; flex: none; font: 700 9px/20px var(--mono); text-align: center; box-shadow: inset 0 0 0 .5px rgba(127,127,127,.35); }
+.sw.lg { width: 40px; height: 40px; border-radius: 9px; font-size: 15px; line-height: 40px; }
+.empty { color: var(--label2); font-size: 12px; padding: 6px 8px 0; }
+.side-foot { border-top: .5px solid var(--sep); padding: 6px 10px 8px; display: grid; gap: 6px; }
+.pm { display: flex; gap: 2px; }
+.sbtn { width: 26px; height: 22px; display: grid; place-items: center; border: 0; background: none; border-radius: 5px; color: var(--label2); }
+.sbtn:hover:not(:disabled) { background: var(--fill); color: var(--label); }
+.sbtn:disabled { opacity: .35; }
+.store { display: flex; align-items: center; gap: 6px; font-size: 11px; color: var(--label2); }
+
+/* ── main column ── */
+.main { display: grid; grid-template-rows: auto minmax(0, 1fr); min-width: 0; min-height: 0; }
+.toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; padding: 9px 14px; background: var(--toolbar); border-bottom: .5px solid var(--sep); }
+.ttl { min-width: 0; flex: 1 1 160px; display: grid; }
+.ttl b { font-weight: 600; font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ttl span { font-size: 11px; color: var(--label2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.tgroup { display: flex; align-items: center; gap: 6px; }
+.ibtn { height: 28px; min-width: 28px; padding: 0 6px; display: inline-flex; align-items: center; justify-content: center; gap: 4px; border: 0; background: none; border-radius: 6px; color: var(--label2); }
+.ibtn:hover { background: var(--fill); color: var(--label); }
+.only-narrow { display: none; }
+
+/* segmented control */
+.seg { display: inline-flex; background: var(--fill); border-radius: 8px; padding: 2px; gap: 2px; }
+.seg button { border: 0; background: none; border-radius: 6px; padding: 3px 12px; display: inline-flex; align-items: center; gap: 5px; color: var(--label); white-space: nowrap; }
+.seg button[aria-checked="true"] { background: var(--seg-on); box-shadow: var(--ctl-shadow); font-weight: 500; }
+.seg.sm button { padding: 2px 10px; font-size: 12px; }
+
+/* push buttons */
+.btn { border: 0; background: var(--control); box-shadow: var(--ctl-shadow); border-radius: 6px; padding: 4px 12px; white-space: nowrap; display: inline-flex; align-items: center; gap: 6px; }
+.btn:active:not(:disabled) { filter: brightness(.94); }
+.btn.primary { background: var(--accent); color: var(--on-accent); box-shadow: none; font-weight: 500; }
+.btn.danger { color: var(--red); }
+.btn.dangerfill { background: var(--red); color: #fff; box-shadow: none; font-weight: 500; }
+.btn:disabled { opacity: .45; }
+.btn.sm { padding: 2px 9px; font-size: 12px; }
+
+/* ── edit view ── */
+.content { display: grid; grid-template-columns: minmax(0, 1fr) 312px; min-height: 0; }
+.stage { overflow: auto; background: var(--canvas); padding: 20px; min-width: 0; }
+.screen { border-radius: 10px; overflow: hidden; box-shadow: 0 0 0 .5px var(--sep), 0 8px 24px rgba(0,0,0,.14); width: 100%; max-width: 1180px; margin: 0 auto; }
+.stage-cap { max-width: 1180px; margin: 10px auto 0; color: var(--label2); font-size: 11px; text-align: center; }
+
+/* inspector: grouped inset form, like System Settings */
+.insp { overflow: auto; background: var(--insp); border-left: .5px solid var(--sep); padding: 14px 14px 28px; display: grid; gap: 18px; align-content: start; min-width: 0; }
+.ihead { display: flex; gap: 12px; align-items: center; }
+.ihead > div { min-width: 0; }
+.iname { font-size: 15px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.isub { font-size: 12px; color: var(--label2); }
+.grp { display: grid; gap: 6px; min-width: 0; }
+.grp h3 { margin: 0; padding: 0 4px; font-size: 11px; font-weight: 600; color: var(--label2); display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+.grp h3 em { font-style: normal; font-weight: 500; text-transform: capitalize; }
+.card { background: var(--card); border-radius: 10px; box-shadow: 0 0 0 .5px var(--sep); overflow: hidden; }
+.frow { display: flex; align-items: center; gap: 8px; min-height: 38px; padding: 6px 12px; }
+.frow + .frow { border-top: .5px solid var(--sep); }
+.frow.col { flex-direction: column; align-items: stretch; gap: 4px; }
+.frow > .lbl { flex: 1; min-width: 0; display: grid; }
+.lbl .tk { font: 10.5px/1.3 var(--mono); color: var(--label2); }
+.note { margin: 0; padding: 0 4px; font-size: 11px; color: var(--label2); text-wrap: pretty; }
+.tf { width: 100%; border: 0; background: var(--fill); border-radius: 6px; padding: 4px 8px; outline: none; resize: vertical; }
+.tf:focus { box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 45%, transparent); }
+.tf[readonly] { color: var(--label2); }
+.frow .tf.inline { width: auto; flex: 1; min-width: 0; }
+.hex { width: 74px; border: 0; background: var(--fill); border-radius: 5px; padding: 3px 6px; font: 11.5px var(--mono); text-transform: lowercase; outline: none; }
+.hex:focus { box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 45%, transparent); }
+.hex.bad { box-shadow: 0 0 0 2px var(--red); }
+.well { -webkit-appearance: none; appearance: none; width: 34px; height: 22px; padding: 0; border: 0; border-radius: 5px; background: none; box-shadow: var(--ctl-shadow); cursor: pointer; flex: none; }
+.well::-webkit-color-swatch-wrapper { padding: 0; } .well::-webkit-color-swatch { border: 0; border-radius: 5px; }
+.well::-moz-color-swatch { border: 0; border-radius: 5px; }
+.pill { font-size: 10px; font-weight: 600; padding: 1px 5px; border-radius: 4px; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.pill.good { color: var(--green); background: color-mix(in srgb, var(--green) 14%, transparent); }
+.pill.ok { color: var(--label2); background: var(--fill); }
+.pill.bad { color: var(--red); background: color-mix(in srgb, var(--red) 14%, transparent); }
+.pop { -webkit-appearance: none; appearance: none; border: 0; background: var(--control) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='12' viewBox='0 0 8 12'%3E%3Cpath d='M1 4.5 4 1.5l3 3M1 7.5l3 3 3-3' fill='none' stroke='%238e8e93' stroke-width='1.4' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") no-repeat right 7px center;
+  box-shadow: var(--ctl-shadow); border-radius: 6px; padding: 3px 24px 3px 9px; max-width: 100%; }
+.range { flex: 1; min-width: 60px; accent-color: var(--accent); }
+.val { width: 40px; text-align: right; color: var(--label2); font-variant-numeric: tabular-nums; }
+.switch { position: relative; width: 38px; height: 22px; border-radius: 11px; border: 0; background: var(--fill2); flex: none; transition: background .18s; }
+.switch::after { content: ""; position: absolute; top: 2px; left: 2px; width: 18px; height: 18px; border-radius: 50%; background: #fff; box-shadow: 0 1px 3px rgba(0,0,0,.25); transition: transform .18s; }
+.switch[aria-checked="true"] { background: var(--accent); }
+.switch[aria-checked="true"]::after { transform: translateX(16px); }
+.acts { display: flex; flex-wrap: wrap; gap: 8px; }
+
+/* ── compare view ── */
+.cmp { overflow: auto; background: var(--canvas); padding: 18px 20px 28px; display: grid; gap: 18px; align-content: start; min-width: 0; }
+.cmp-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; }
+.cmp-bar .note { padding: 0; }
+.panes { display: grid; grid-template-columns: repeat(var(--n, 2), minmax(0, 1fr)); gap: 14px; }
+.pane { display: grid; gap: 8px; align-content: start; min-width: 0; }
+.phd { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.phd .pop { flex: 1; min-width: 0; }
+.dwrap { overflow-x: auto; }
+.dt { width: 100%; border-collapse: collapse; font-size: 12px; }
+.dt th, .dt td { padding: 7px 12px; text-align: left; border-top: .5px solid var(--sep); white-space: nowrap; }
+.dt thead th { border-top: 0; color: var(--label2); font-weight: 600; font-size: 11px; }
+.dt td:first-child { color: var(--label2); }
+.dt .cv { display: inline-flex; align-items: center; gap: 6px; font-family: var(--mono); font-size: 11.5px; }
+.dt .cv i { width: 14px; height: 14px; border-radius: 3px; box-shadow: inset 0 0 0 .5px rgba(127,127,127,.4); }
+.dt tr.same td { color: var(--label3); }
+
+/* ── sheets, HUD ── */
+dialog.sheet { border: 0; padding: 20px; border-radius: 12px; background: var(--win); color: var(--label); box-shadow: var(--shadow); width: min(480px, calc(100vw - 32px)); }
+dialog.sheet::backdrop { background: rgba(0,0,0,.28); }
+.sheet h2 { margin: 0 0 4px; font-size: 15px; font-weight: 600; }
+.sheet p { margin: 0 0 14px; color: var(--label2); text-wrap: pretty; }
+.sheet .acts { justify-content: flex-end; margin-top: 16px; }
+.code { margin: 10px 0 0; max-height: 46vh; overflow: auto; background: var(--fill); border-radius: 8px; padding: 10px 12px; font: 11.5px/1.5 var(--mono); white-space: pre; user-select: text; }
+.hud { position: fixed; left: 50%; bottom: calc(28px + env(safe-area-inset-bottom, 0px)); transform: translate(-50%, 10px); opacity: 0; pointer-events: none;
+  background: color-mix(in srgb, var(--win) 88%, transparent); -webkit-backdrop-filter: blur(20px); backdrop-filter: blur(20px); box-shadow: var(--shadow);
+  border-radius: 10px; padding: 8px 14px; font-weight: 500; transition: opacity .2s, transform .2s; max-width: calc(100vw - 32px); z-index: 50; }
+.hud.show { opacity: 1; transform: translate(-50%, 0); }
+.scrim { display: none; }
+
+/* ── pop-out preview: the terminal fills the whole window, with a floating control bar ── */
+.popout { position: fixed; inset: 0; z-index: 40; display: flex; flex-direction: column; background: var(--canvas); }
+.pop-scroll { flex: 1; overflow: auto; min-height: 0; }
+.pop-scroll .term { min-height: 100%; padding: max(12px, env(safe-area-inset-top, 0px)) max(2ch, env(safe-area-inset-right, 0px)) calc(76px + env(safe-area-inset-bottom, 0px)) max(2ch, env(safe-area-inset-left, 0px)); }
+.pop-bar { position: absolute; right: calc(16px + env(safe-area-inset-right, 0px)); bottom: calc(16px + env(safe-area-inset-bottom, 0px)); display: flex; align-items: center; gap: 8px;
+  padding: 6px 6px 6px 12px; border-radius: 12px; background: color-mix(in srgb, var(--win) 82%, transparent); -webkit-backdrop-filter: blur(20px) saturate(1.6); backdrop-filter: blur(20px) saturate(1.6);
+  box-shadow: var(--shadow); color: var(--label); max-width: calc(100% - 32px); }
+.pop-bar b { font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+@media (max-width: 520px) { .pop-bar { left: calc(16px + env(safe-area-inset-left, 0px)); } .pop-bar b { flex: 1; } }
+
+/* ── responsive ── */
+@media (max-width: 1040px) {
+  .win { grid-template-columns: minmax(0, 1fr); }
+  .side { position: absolute; inset: 0 auto 0 0; width: 260px; transform: translateX(-102%); transition: transform .25s ease; box-shadow: var(--shadow); }
+  .win.side-open .side { transform: none; }
+  .win.side-open .scrim { display: block; position: absolute; inset: 0; background: rgba(0,0,0,.2); z-index: 15; }
+  .only-narrow { display: inline-flex; }
+  .content { grid-template-columns: minmax(0, 1fr) 290px; }
+}
+@media (max-width: 760px) {
+  body { padding-block: 8px; }
+  .content { display: block; overflow: auto; }
+  .stage { overflow: visible; padding: 14px; }
+  .insp { overflow: visible; border-left: 0; border-top: .5px solid var(--sep); }
+  .panes { grid-template-columns: minmax(0, 1fr); }
+  .cmp { padding: 14px; }
+  .ttl { flex-basis: 100%; order: -1; }
+}
+@media (prefers-reduced-motion: reduce) { .side, .switch, .switch::after, .hud { transition: none; } }
+
+/* ── inside the native Mac app: the real window replaces the drawn one ── */
+html.native body, html.preview-only body { padding: 0; }
+html.native .win { border-radius: 0; box-shadow: none; }
+html.preview-only .win, html.native #pop-fs, html.native #pop-close { display: none; }
+.gone { padding: 24px; color: var(--label2); font: 13px var(--sys); }
+
+/* ═══ terminal preview: every colour comes from the style being edited ═══ */
+.term { container-type: inline-size; background: var(--t-bg); color: var(--t-fg); font-family: var(--t-mono); font-size: var(--t-fs); line-height: var(--t-lh);
+  font-variant-numeric: tabular-nums; padding: 8px 2ch 18px; display: grid; grid-template-columns: minmax(0, 1fr); gap: 12px; -webkit-font-smoothing: auto; }
+.term ::selection { background: var(--t-blue); color: var(--t-blueFg); }
+.term b { color: var(--t-white); font-weight: 700; }
+.term kbd { font: inherit; }
+.term .c-fg { color: var(--t-fg); } .term .c-fg2 { color: var(--t-fg2); } .term .c-dim { color: var(--t-dim); } .term .c-line { color: var(--t-line); }
+.term .c-cyan { color: var(--t-cyan); } .term .c-yellow { color: var(--t-yellow); } .term .c-magenta { color: var(--t-magenta); }
+.term .c-white { color: var(--t-white); } .term .c-orange { color: var(--t-orange); } .term .c-red { color: var(--t-red); }
+.term.up .t-uc { text-transform: uppercase; }
+.t-fill { flex: 1 1 0; min-width: 1ch; overflow: hidden; white-space: nowrap; }
+.t-nav { display: flex; flex-wrap: wrap; align-items: center; gap: 2px; }
+.t-tab { padding: 1px 1ch; white-space: nowrap; }
+.t-tab kbd { color: var(--t-dim); }
+.t-tab.hv { background: var(--t-faint); }
+.t-tab.on { background: var(--t-blue); color: var(--t-blueFg); font-weight: 700; box-shadow: inset 0 -2px 0 var(--t-blueLine); }
+.t-tab.on kbd { color: var(--t-blueFg); }
+.t-sp { flex: 1; }
+.t-rule { display: flex; color: var(--t-fg2); line-height: 1.2; margin-top: -10px; }
+.t-top { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 6px 3ch; align-items: end; }
+.t-banner { margin: 0; white-space: pre; line-height: 1.05; font-size: clamp(4px, 1.5cqi, 11px); font-family: inherit; color: var(--t-fg); }
+.t-banner .bk { color: var(--t-dim); }
+.t-sub { display: grid; gap: 2px; color: var(--t-dim); min-width: 0; }
+.t-sub b { color: var(--t-fg); font-weight: 400; }
+.t-cursor { display: inline-block; width: .6em; height: 1.05em; vertical-align: -2px; background: var(--t-fg); }
+@media (prefers-reduced-motion: no-preference) { .term.blink .t-cursor { animation: tblink 1.1s steps(1) infinite; } @keyframes tblink { 50% { opacity: 0; } } }
+.t-ptitle { display: flex; white-space: nowrap; overflow: hidden; color: var(--t-fg2); }
+.t-ptitle .pt { color: var(--t-white); padding: 0 1ch; font-weight: 700; letter-spacing: .12em; }
+.t-key { display: flex; flex-wrap: wrap; gap: 2px 2ch; color: var(--t-dim); font-size: .92em; }
+.t-key span { white-space: nowrap; }
+.t-tiles { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px 2ch; }
+@container (min-width: 620px) { .t-tiles { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+.t-grid { display: grid; grid-template-columns: minmax(0, 1fr); gap: 12px 2ch; }
+@container (min-width: 660px) { .t-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } .t-wide { grid-column: 1 / -1; } }
+@container (max-width: 560px) { .t-top { grid-template-columns: minmax(0, 1fr); } }
+.t-panel { position: relative; min-width: 0; display: flex; flex-direction: column; }
+.t-panel::before { content: ""; position: absolute; top: .8em; bottom: .8em; left: calc(.5ch - var(--t-sw) / 2); right: calc(.5ch - var(--t-sw) / 2);
+  border-left: var(--t-sw) var(--t-ss) var(--t-line); border-right: var(--t-sw) var(--t-ss) var(--t-line); pointer-events: none; }
+.t-panel.dbl::before { left: calc(.5ch - 1.5px); right: calc(.5ch - 1.5px); border-left: 3px double var(--t-fg2); border-right: 3px double var(--t-fg2); }
+.t-head, .t-foot { display: flex; white-space: nowrap; color: var(--t-line); line-height: 1.6; min-width: 0; }
+.dbl .t-head, .dbl .t-foot { color: var(--t-fg2); }
+.t-cmd { color: var(--t-fg); padding: 0 .5ch; flex: 0 1 auto; overflow: hidden; text-overflow: ellipsis; }
+.t-cmd i { font-style: normal; color: var(--t-dim); }
+.t-note { color: var(--t-dim); padding: 0 .5ch; flex: 0 1000 auto; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+.t-body { padding: 4px 2ch 6px; min-width: 0; flex: 1 1 auto; }
+.t-big { font-size: 1.9em; line-height: 1.15; font-weight: 700; color: var(--t-white); }
+.t-desc { margin: 0 0 6px; color: var(--t-dim); }
+.t-bar { display: grid; grid-template-columns: 9ch minmax(0, auto) 4ch; gap: 1ch; white-space: pre; }
+.t-bar > :nth-child(2) { overflow: hidden; }
+.t-bar > :last-child { text-align: right; }
+.t-pre { white-space: pre; overflow: hidden; }
+.t-tw { overflow-x: auto; }
+.t-table { border-collapse: collapse; width: 100%; }
+.t-table th { text-align: left; font-weight: 400; color: var(--t-dim); font-size: .85em; text-transform: uppercase; letter-spacing: .04em; border-bottom: 1px dashed var(--t-line); padding: 0 2ch 2px 0; white-space: nowrap; }
+.t-table td { padding: 1px 2ch 1px 0; white-space: nowrap; }
+.t-table tr.hv td { background: var(--t-blue); color: var(--t-blueFg); }
+.t-table tr.hv td .c-dim { color: var(--t-blueFg); }
+.t-run { font-weight: 700; color: var(--t-fg); white-space: nowrap; }
+.t-run i, .t-btn i { font-style: normal; font-weight: 400; color: var(--t-dim); }
+.t-btn { white-space: nowrap; padding: 0 .3ch; }
+.t-btn.on { background: var(--t-blue); color: var(--t-blueFg); font-weight: 700; }
+.t-btn.on i { color: var(--t-blueFg); }
+.t-cmdrow { display: flex; flex-wrap: wrap; gap: 0 1.5ch; align-items: baseline; }
+.t-cmdrow code { font: inherit; color: var(--t-fg); }
+.t-writes { color: var(--t-orange); font-size: .85em; }
+.t-in { border-bottom: 1px solid var(--t-fg2); padding: 0 .5ch; color: var(--t-fg); }
+.t-ctrls { display: flex; flex-wrap: wrap; gap: 2px 2ch; color: var(--t-dim); margin-bottom: 6px; }
+.t-msg { margin-top: 6px; } .t-msg::before { content: "› "; color: var(--t-dim); }
+.t-stack { display: grid; gap: 4px; }
+</style>
+
+<div class="win" id="win">
+  <aside class="side" id="side" aria-label="Styles">
+    <div class="side-top">
+      <div class="app-name"><span class="glyph" aria-hidden="true">›_</span>Theme Studio</div>
+      <label class="search"><svg class="i" viewBox="0 0 16 16" aria-hidden="true"><circle cx="7" cy="7" r="4.5"/><path d="m10.5 10.5 3 3"/></svg><input id="q" type="search" placeholder="Search" aria-label="Search styles"></label>
+    </div>
+    <nav class="slist" id="slist"></nav>
+    <div class="side-foot">
+      <div class="pm">
+        <button class="sbtn" id="b-add" title="New style from the selected one (⌘D)" aria-label="New style from the selected one"><svg class="i" viewBox="0 0 16 16"><path d="M8 3v10M3 8h10"/></svg></button>
+        <button class="sbtn" id="b-del" title="Delete style" aria-label="Delete style"><svg class="i" viewBox="0 0 16 16"><path d="M3 8h10"/></svg></button>
+      </div>
+      <div class="store" id="store"></div>
+    </div>
+  </aside>
+  <div class="scrim" id="scrim"></div>
+
+  <div class="main">
+    <header class="toolbar">
+      <button class="ibtn only-narrow" id="b-side" aria-label="Show styles" title="Show styles"><svg class="i" viewBox="0 0 16 16"><rect x="1.8" y="2.8" width="12.4" height="10.4" rx="2"/><path d="M6 3v10"/></svg></button>
+      <div class="ttl"><b id="t-name">Theme Studio</b><span id="t-sub"></span></div>
+      <div class="seg" role="radiogroup" aria-label="View" id="seg-mode">
+        <button role="radio" data-v="edit" aria-checked="true">Edit</button>
+        <button role="radio" data-v="compare" aria-checked="false">Compare</button>
+      </div>
+      <div class="seg" role="radiogroup" aria-label="Preview appearance" id="seg-var">
+        <button role="radio" data-v="dark" aria-checked="true" title="Dark palette"><svg class="i" viewBox="0 0 16 16"><path d="M13.2 9.6A5.6 5.6 0 0 1 6.4 2.8a5.6 5.6 0 1 0 6.8 6.8z"/></svg>Dark</button>
+        <button role="radio" data-v="light" aria-checked="false" title="Light palette"><svg class="i" viewBox="0 0 16 16"><circle cx="8" cy="8" r="3"/><path d="M8 1.5v1.6M8 12.9v1.6M1.5 8h1.6M12.9 8h1.6M3.4 3.4l1.1 1.1M11.5 11.5l1.1 1.1M3.4 12.6l1.1-1.1M11.5 4.5l1.1-1.1"/></svg>Light</button>
+      </div>
+      <div class="tgroup">
+        <button class="ibtn" id="b-pop" title="Pop out preview (P)" aria-label="Pop out preview"><svg class="i" viewBox="0 0 16 16"><path d="M9.5 2.5h4v4M13.5 2.5 9 7M6.5 13.5h-4v-4M2.5 13.5 7 9"/></svg></button>
+        <button class="ibtn" id="b-export" title="Export tokens" aria-label="Export tokens"><svg class="i" viewBox="0 0 16 16"><path d="M8 10V1.8M5 4.6 8 1.8l3 2.8M5.5 7H4a1 1 0 0 0-1 1v5.2a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1V8a1 1 0 0 0-1-1h-1.5"/></svg></button>
+        <button class="btn primary" id="b-save" title="Save (⌘S)">Save</button>
+      </div>
+    </header>
+
+    <div class="content" id="v-edit">
+      <div class="stage">
+        <div class="screen" id="preview"></div>
+        <p class="stage-cap">Live preview · made-up demo data · the second table row and tab show hover, the M button shows pressed</p>
+      </div>
+      <aside class="insp" id="insp" aria-label="Inspector"></aside>
+    </div>
+
+    <div class="cmp" id="v-cmp" hidden></div>
+  </div>
+</div>
+
+<dialog class="sheet" id="dlg-saveas">
+  <form id="f-saveas">
+    <h2>Save as a new style</h2>
+    <p>Presets stay as they are. Your edits are kept in a new style under My Styles.</p>
+    <input class="tf" id="saveas-name" aria-label="Style name" maxlength="60" autocomplete="off">
+    <div class="acts"><button class="btn" type="button" id="saveas-cancel">Cancel</button><button class="btn primary" type="submit" id="saveas-ok">Save</button></div>
+  </form>
+</dialog>
+<dialog class="sheet" id="dlg-del">
+  <h2 id="del-title">Delete style?</h2>
+  <p>This removes it from My Styles. It can't be undone.</p>
+  <div class="acts"><button class="btn" type="button" id="del-cancel">Cancel</button><button class="btn dangerfill" type="button" id="del-ok">Delete</button></div>
+</dialog>
+<dialog class="sheet" id="dlg-export">
+  <h2 id="ex-title">Export</h2>
+  <p>Dark-first tokens in the terminal-preview format, with the light “paper terminal” blocks. Paste them over the <code>:root</code> blocks in reference.html, or ask Claude to apply this style by name.</p>
+  <div class="seg sm" role="radiogroup" aria-label="Format" id="seg-ex">
+    <button role="radio" data-v="css" aria-checked="true">CSS</button>
+    <button role="radio" data-v="json" aria-checked="false">JSON</button>
+  </div>
+  <pre class="code" id="ex-code" tabindex="0"></pre>
+  <div class="acts"><button class="btn" id="ex-file" hidden>Save to File…</button><button class="btn" id="ex-done">Done</button><button class="btn primary" id="ex-copy">Copy</button></div>
+</dialog>
+<div class="hud" id="hud" role="status" aria-live="polite"></div>
+<div class="popout" id="popout" hidden role="dialog" aria-modal="true" aria-label="Preview">
+  <div class="pop-scroll" id="pop-body"></div>
+  <div class="pop-bar">
+    <b id="pop-name"></b>
+    <div class="seg sm" role="radiogroup" aria-label="Preview appearance" id="seg-pvar">
+      <button role="radio" data-v="dark" aria-checked="true">Dark</button>
+      <button role="radio" data-v="light" aria-checked="false">Light</button>
+    </div>
+    <button class="ibtn" id="pop-fs" title="Full screen" aria-label="Full screen"><svg class="i" viewBox="0 0 16 16"><path d="M2.5 6V2.5H6M10 2.5h3.5V6M13.5 10v3.5H10M6 13.5H2.5V10"/></svg></button>
+    <button class="ibtn" id="pop-close" title="Close (Esc)" aria-label="Close preview"><svg class="i" viewBox="0 0 16 16"><path d="M4 4l8 8M12 4l-8 8"/></svg></button>
+  </div>
+</div>
+
+<script>
+/* ───────── model ───────── */
+const TOK = [
+  ['bg', '--bg', 'Background', 'base'], ['fg', '--fg', 'Text', 'base', 'text'], ['fg2', '--fg2', 'Secondary text', 'base', 'text'],
+  ['dim', '--dim', 'Hints & prompts', 'base', 'text'], ['line', '--line', 'Frames', 'base', 'ui'], ['faint', '--faint', 'Tab hover tint', 'base'],
+  ['blue', '--blue', 'Selection', 'hl'], ['blueFg', '--blue-fg', 'Selection text', 'hl', 'onblue'], ['blueLine', '--blue-line', 'Focus line', 'hl', 'ui'],
+  ['cyan', '--k-cyan', 'Kind', 'cond', 'text'], ['yellow', '--k-yellow', 'Use', 'cond', 'text'], ['magenta', '--k-magenta', 'Project', 'cond', 'text'],
+  ['white', '--k-white', 'Totals', 'cond', 'text'], ['orange', '--k-orange', 'Needs action', 'cond', 'text'], ['red', '--k-red', 'Problem', 'cond', 'text'],
+];
+const FONTS = {
+  sf: { label: 'SF Mono', stack: 'ui-monospace, "SF Mono", SFMono-Regular, Menlo, Consolas, monospace' },
+  menlo: { label: 'Menlo', stack: 'Menlo, Monaco, ui-monospace, monospace' },
+  jet: { label: 'JetBrains Mono', stack: '"JetBrains Mono", ui-monospace, Menlo, monospace' },
+  plex: { label: 'IBM Plex Mono', stack: '"IBM Plex Mono", ui-monospace, Menlo, monospace' },
+  fira: { label: 'Fira Code', stack: '"Fira Code", ui-monospace, Menlo, monospace' },
+  space: { label: 'Space Mono', stack: '"Space Mono", ui-monospace, Menlo, monospace' },
+};
+// corner, run, tee-left-of-cmd, tee-right-of-cmd, top-right, bottom-left, bottom-right
+const BOX = {
+  single:  { label: 'Single',  c: ['┌','─','┤','├','┐','└','┘'], w: 1, s: 'solid',  tree: ['├── ','└── ','│   '] },
+  rounded: { label: 'Rounded', c: ['╭','─','┤','├','╮','╰','╯'], w: 1, s: 'solid',  tree: ['├── ','╰── ','│   '] },
+  heavy:   { label: 'Heavy',   c: ['┏','━','┫','┣','┓','┗','┛'], w: 2, s: 'solid',  tree: ['┣━━ ','┗━━ ','┃   '] },
+  double:  { label: 'Double',  c: ['╔','═','╡','╞','╗','╚','╝'], w: 3, s: 'double', tree: ['╠══ ','╚══ ','║   '] },
+  ascii:   { label: 'ASCII',   c: ['+','-','[',']','+','+','+'], w: 1, s: 'solid',  tree: ['|-- ','`-- ','|   '] },
+};
+const DBL = { std: ['╔','═','╡','╞','╗','╚','╝'], ascii: ['#','=','[',']','#','#','#'] };
+
+const LIGHT_STD = { blue: '#dbe3ff', blueFg: '#081a66', blueLine: '#2f56ff', cyan: '#007a8a', yellow: '#8a6d00', magenta: '#b0129a', white: '#000000', orange: '#c25a00', red: '#d0021b' };
+const PRESETS = [
+  { id: 'p_bookmark', name: 'Bookmark Panel', notes: 'The current default: pure black, deep green mono, blue for selection only.',
+    dark: { bg: '#000000', fg: '#00e35a', fg2: '#0aa544', dim: '#0b7a35', line: '#0b5a2b', faint: '#062b15', blue: '#081a66', blueFg: '#e6ecff', blueLine: '#2f56ff', cyan: '#00e5ff', yellow: '#ffe600', magenta: '#ff2bd6', white: '#ffffff', orange: '#ff8a00', red: '#ff2b2b' },
+    light: { bg: '#f4f6f1', fg: '#00702c', fg2: '#1d7f42', dim: '#4f7a5c', line: '#9cc2a8', faint: '#e2efe5', ...LIGHT_STD },
+    font: 'sf', size: 13, lh: 1.45, box: 'single', dblKey: true, blink: true, upper: true },
+  { id: 'p_amber', name: 'Amber Phosphor', notes: 'Warm amber tube glow. Orange shifted redder so it stays apart from the text.',
+    dark: { bg: '#0c0800', fg: '#ffb000', fg2: '#cc8c00', dim: '#946600', line: '#5e4100', faint: '#2b1d00', blue: '#0b1f66', blueFg: '#e6ecff', blueLine: '#3d6bff', cyan: '#00e5ff', yellow: '#eaff3a', magenta: '#ff4fd8', white: '#ffffff', orange: '#ff5a1f', red: '#ff2b2b' },
+    light: { bg: '#fbf6ea', fg: '#8a5300', fg2: '#9a6a10', dim: '#80683f', line: '#d6bf8f', faint: '#f2e7cc', ...LIGHT_STD, yellow: '#6f7a00', orange: '#c23d00' },
+    font: 'menlo', size: 13, lh: 1.4, box: 'single', dblKey: true, blink: true, upper: true },
+  { id: 'p_ice', name: 'Ice Terminal', notes: 'Cold blue text. Selection moves to violet and kind to teal so neither clashes with the text.',
+    dark: { bg: '#01060c', fg: '#6fd6ff', fg2: '#3ea4d4', dim: '#2f7396', line: '#1a4561', faint: '#08202f', blue: '#2a1170', blueFg: '#efe8ff', blueLine: '#8c5cff', cyan: '#00ffb3', yellow: '#ffe600', magenta: '#ff2bd6', white: '#ffffff', orange: '#ff8a00', red: '#ff3b3b' },
+    light: { bg: '#f2f7fa', fg: '#005f8a', fg2: '#2a7299', dim: '#557a8e', line: '#a7c6d6', faint: '#e1eef5', ...LIGHT_STD, blue: '#e6dcff', blueFg: '#2a1170', blueLine: '#6a3dff', cyan: '#00806a' },
+    font: 'jet', size: 13, lh: 1.5, box: 'rounded', dblKey: true, blink: true, upper: true },
+  { id: 'p_ink', name: 'Mono Ink', notes: 'Greyscale base so the condition colours carry all the meaning. Plain ASCII frames.',
+    dark: { bg: '#0a0a0a', fg: '#e8e8e8', fg2: '#b0b0b0', dim: '#7a7a7a', line: '#3d3d3d', faint: '#1c1c1c', blue: '#0d2a7a', blueFg: '#e6ecff', blueLine: '#3b6cff', cyan: '#00e5ff', yellow: '#ffe600', magenta: '#ff2bd6', white: '#ffffff', orange: '#ff8a00', red: '#ff2b2b' },
+    light: { bg: '#fafafa', fg: '#1a1a1a', fg2: '#444444', dim: '#6b6b6b', line: '#c4c4c4', faint: '#ececec', ...LIGHT_STD },
+    font: 'plex', size: 13, lh: 1.45, box: 'ascii', dblKey: false, blink: false, upper: true },
+].map(p => ({ ...p, builtIn: true }));
+const PRE = Object.fromEntries(PRESETS.map(p => [p.id, p]));
+
+/* ───────── helpers ───────── */
+const $ = (s, r = document) => r.querySelector(s);
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const clone = o => JSON.parse(JSON.stringify(o));
+const HEX = /^#[0-9a-f]{6}$/i;
+const ls = {
+  get(k, d) { try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : d; } catch { return d; } },
+  set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} },
+};
+const lum = h => { const n = parseInt(h.slice(1), 16), c = [n >> 16 & 255, n >> 8 & 255, n & 255].map(v => { v /= 255; return v <= .03928 ? v / 12.92 : ((v + .055) / 1.055) ** 2.4; }); return .2126 * c[0] + .7152 * c[1] + .0722 * c[2]; };
+const contrast = (a, b) => { const x = lum(a), y = lum(b); return (Math.max(x, y) + .05) / (Math.min(x, y) + .05); };
+const uid = () => 's' + Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+const ago = t => { if (!t) return ''; const s = (Date.now() - t) / 1000; if (s < 60) return 'just now'; if (s < 3600) return Math.floor(s / 60) + ' min ago'; if (s < 86400) return Math.floor(s / 3600) + ' hr ago'; return new Date(t).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }); };
+const FIELDS = ['name', 'notes', 'dark', 'light', 'font', 'size', 'lh', 'box', 'dblKey', 'blink', 'upper'];
+const strip = st => { const o = {}; FIELDS.forEach(k => o[k] = clone(st[k])); return o; };
+function normalize(x) {
+  const d = PRE.p_bookmark, o = { id: x.id, updatedAt: x.updatedAt || 0 };
+  o.name = String(x.name || 'Untitled').slice(0, 60); o.notes = String(x.notes || '').slice(0, 400);
+  for (const v of ['dark', 'light']) { o[v] = {}; TOK.forEach(([k]) => { const c = x[v]?.[k]; o[v][k] = HEX.test(c) ? c.toLowerCase() : d[v][k]; }); }
+  o.font = FONTS[x.font] ? x.font : d.font; o.box = BOX[x.box] ? x.box : d.box;
+  o.size = Math.min(18, Math.max(10, +x.size || d.size)); o.lh = Math.min(1.9, Math.max(1.1, +x.lh || d.lh));
+  for (const k of ['dblKey', 'blink', 'upper']) o[k] = typeof x[k] === 'boolean' ? x[k] : d[k];
+  return o;
+}
+const ICON = {
+  lock: '<svg class="i lock" viewBox="0 0 16 16" aria-label="Preset"><rect x="3.5" y="7" width="9" height="6.5" rx="1.5"/><path d="M5.5 7V5.2a2.5 2.5 0 0 1 5 0V7"/></svg>',
+  cloud: '<svg class="i" viewBox="0 0 16 16" aria-hidden="true"><path d="M4.6 12.5h7a2.9 2.9 0 0 0 .3-5.8 4 4 0 0 0-7.7-.9 3.4 3.4 0 0 0 .4 6.7z"/></svg>',
+  disk: '<svg class="i" viewBox="0 0 16 16" aria-hidden="true"><rect x="2.5" y="2.5" width="11" height="11" rx="2"/><path d="M5 2.5v3.5h6V2.5M5 13.5V10h6v3.5"/></svg>',
+  wait: '<svg class="i" viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="5.5"/><path d="M8 5v3l2 1.5"/></svg>',
+};
+
+/* native Mac app bridge (absent in the browser) */
+const NATIVE = window.__TS_NATIVE || null;
+const PREVIEW = NATIVE?.mode === 'preview';
+const post = msg => { try { window.webkit.messageHandlers.studio.postMessage(msg); } catch {} };
+if (NATIVE) document.documentElement.classList.add('native');
+
+/* ───────── state ───────── */
+const ui = ls.get('ts.ui', {});
+const S = {
+  user: {}, drafts: ls.get('ts.drafts', {}), store: 'loading',
+  sel: ui.sel || 'p_bookmark', mode: ui.mode === 'compare' ? 'compare' : 'edit', variant: ui.variant === 'light' ? 'light' : 'dark',
+  cmp: Array.isArray(ui.cmp) ? ui.cmp : ['p_bookmark', 'p_amber', 'p_ice'], cmpN: ui.cmpN === 3 ? 3 : 2, showAll: false, q: '', exFmt: 'css',
+};
+for (const id in S.drafts) S.drafts[id] = normalize({ ...S.drafts[id], id });
+S.cmp = S.cmp.filter(x => typeof x === 'string').slice(0, 3); while (S.cmp.length < 3) S.cmp.push(PRESETS[S.cmp.length].id);
+const isPreset = id => !!PRE[id];
+const base = id => PRE[id] || S.user[id];
+const cur = (id = S.sel) => S.drafts[id] || base(id);
+const exists = id => !!base(id);
+const isDirty = id => !!S.drafts[id] && !!base(id) && JSON.stringify(strip(S.drafts[id])) !== JSON.stringify(strip(base(id)));
+let draftTimer;
+const saveDrafts = () => { clearTimeout(draftTimer); draftTimer = setTimeout(() => { const o = {}; for (const id in S.drafts) if (isDirty(id) || !exists(id)) o[id] = S.drafts[id]; ls.set('ts.drafts', o); }, 250); };
+const saveUI = () => ls.set('ts.ui', { sel: S.sel, mode: S.mode, variant: S.variant, cmp: S.cmp, cmpN: S.cmpN });
+function draft() { if (!S.drafts[S.sel]) S.drafts[S.sel] = clone(base(S.sel)); return S.drafts[S.sel]; }
+
+/* ───────── terminal preview ───────── */
+const GLYPH = {
+  O: [' ██████╗ ', '██╔═══██╗', '██║   ██║', '██║   ██║', '╚██████╔╝', ' ╚═════╝ '],
+  R: ['██████╗ ', '██╔══██╗', '██████╔╝', '██╔══██╗', '██║  ██║', '╚═╝  ╚═╝'],
+  B: ['██████╗ ', '██╔══██╗', '██████╔╝', '██╔══██╗', '██████╔╝', '╚═════╝ '],
+  I: ['██╗', '██║', '██║', '██║', '██║', '╚═╝'],
+  T: ['████████╗', '╚══██╔══╝', '   ██║   ', '   ██║   ', '   ██║   ', '   ╚═╝   '],
+};
+const BANNER = [0, 1, 2, 3, 4, 5].map(i => [...'ORBIT'].map(ch => GLYPH[ch][i]).join('')).join('\n');
+
+function termHTML(st, v) {
+  const p = st[v], bx = BOX[st.box], dc = st.box === 'ascii' ? DBL.ascii : DBL.std;
+  const vars = TOK.map(([k]) => `--t-${k}:${p[k]}`).join(';') +
+    `;--t-mono:${FONTS[st.font].stack.replace(/"/g, "'")};--t-fs:${st.size}px;--t-lh:${st.lh};--t-sw:${bx.w}px;--t-ss:${bx.s}`;
+  const run = (ch, n = 400) => ch.repeat(n);
+  const panel = (title, note, body, o = {}) => {
+    const dbl = o.dbl && st.dblKey, c = dbl ? dc : bx.c;
+    return `<section class="t-panel${dbl ? ' dbl' : ''}${o.cls ? ' ' + o.cls : ''}">
+      <div class="t-head"><span>${c[0]}${c[1]}${c[2]}</span><span class="t-cmd">${o.label ? '' : '<i>$ </i>'}${title}</span><span>${c[3]}${c[1]}</span>${note ? `<span class="t-note">${note}</span>` : ''}<span class="t-fill">${run(c[1])}</span><span>${c[4]}</span></div>
+      <div class="t-body">${body}</div>
+      <div class="t-foot"><span>${c[5]}</span><span class="t-fill">${run(c[1])}</span><span>${c[6]}</span></div></section>`;
+  };
+  const tile = (label, num, cap, cls = '') => panel(`<span class="t-uc">${label}</span>`, '', `<div class="t-big ${cls}">${num}</div><div class="c-dim">${cap}</div>`, { label: true });
+  const bars = [['work/', 412], ['home/', 190], ['reading/', 128], ['tools/', 74], ['inbox/', 37, 'c-orange'], ['broken/', 3, 'c-red']].map(([n, val, c]) => {
+    const W = 18, k = Math.max(1, Math.round(val / 412 * W)), cl = c || 'c-fg';
+    return `<div class="t-bar"><span class="${cl}">${n}</span><span><span class="${cl}">${'█'.repeat(k)}</span><span class="c-line">${'░'.repeat(W - k)}</span></span><span class="${val === 412 ? 'c-white' : (c || 'c-fg2')}">${val}</span></div>`;
+  }).join('');
+  const sp = '▁▂▃▄▅▆▇█', sv = [1, 2, 2, 3, 5, 3, 2, 3, 5, 6, 7, 5, 3, 5, 6, 8];
+  const spark = sv.map((x, i) => `<span class="${i === sv.length - 1 ? 'c-white' : 'c-fg'}">${sp[x - 1]}</span>`).join('');
+  const hv = [0, 1, 1, 2, 4, 3, 1, 0, 2, 3, 5, 4, 2, 1, 3, 4, 5, 2], sh = ' ·░▒▓█';
+  const heat = hv.map(x => x === 0 ? '<span class="c-line">·</span>' : x === 1 ? '<span class="c-dim">·</span>' : `<span class="c-fg">${sh[x]}</span>`).join('');
+  const t = bx.tree, br = `<span class="c-line">`;
+  const tree = [
+    `<b class="c-fg">hubs/</b> <span class="c-dim">5 folders</span>`,
+    `${br}${t[0]}</span><span class="c-dim">▾</span> <b class="c-fg">work/</b>        <span class="c-dim">412</span>`,
+    `${br}${t[2]}${t[0]}</span>refs/        <span class="c-dim"> 38</span>`,
+    `${br}${t[2]}${t[1]}</span>tools/       <span class="c-dim"> 74</span>`,
+    `${br}${t[0]}</span><span class="c-dim">▸</span> <b class="c-fg">home/</b>        <span class="c-dim">190</span>`,
+    `${br}${t[1]}</span><span class="c-dim">▸</span> <b class="c-fg">inbox/</b>       <span class="c-orange"> 37</span>`,
+  ].join('\n');
+  const chip = s => s === 'OK' ? '<span class="c-fg">[ OK ]</span>' : s === 'WAIT' ? '<span class="c-orange">[WAIT]</span>' : '<span class="c-red">[FAIL]</span>';
+  const rows = [['type scale notes', 'article', 'research', 'atlas', 'OK'], ['mono fonts list', 'repo', 'tools', 'orbit', 'WAIT'], ['grid systems talk', 'video', 'learn', 'atlas', 'OK'], ['old api docs', 'docs', 'reference', 'orbit', 'FAIL']]
+    .map((r, i) => `<tr${i === 1 ? ' class="hv"' : ''}><td><span class="c-dim">› </span>${r[0]}</td><td class="c-cyan">${r[1]}</td><td class="c-yellow">${r[2]}</td><td class="c-magenta">${r[3]}</td><td>${chip(r[4])}</td></tr>`).join('');
+  const bk = st.box === 'ascii' ? ['+=+', '=', '+'] : ['╔═╗', '═', '╗'];
+  const bkb = st.box === 'ascii' ? ['+', '=', '=+'] : ['╚', '═', '═╝'];
+  return `<div class="term${st.upper ? ' up' : ''}${st.blink ? ' blink' : ''}" style="${vars}">
+    <nav class="t-nav"><span class="t-tab on"><kbd>1</kbd> <span class="t-uc">Overview</span></span><span class="c-line">│</span><span class="t-tab hv"><kbd>2</kbd> <span class="t-uc">Charts</span></span><span class="c-line">│</span><span class="t-tab"><kbd>3</kbd> <span class="t-uc">Files</span></span><span class="t-sp"></span><span><span class="c-dim">[ </span><span class="c-orange t-uc">Demo</span><span class="c-dim"> ]</span></span></nav>
+    <div class="t-rule"><span class="t-fill">${run(st.box === 'ascii' ? '=' : '═')}</span></div>
+    <div class="t-top">
+      <pre class="t-banner" aria-label="Orbit"><span class="bk">  ${bk[0]} O R B I T ${bk[1].repeat(22)}${bk[2]}</span>\n${BANNER}\n<span class="bk">  ${bkb[0]}${bkb[1].repeat(25)} v 2 . 4 ${bkb[2]}</span></pre>
+      <div class="t-sub"><span>user <b>demo</b> · host <b>orbit.example</b> · saves <b>1,284</b></span><span>keys <b>1 2 3</b> pages · <b>R</b> refresh · <b>/</b> search</span><span><span class="c-dim">root@orbit:~$</span> <span class="c-fg">status --all</span> <span class="t-cursor"></span></span></div>
+    </div>
+    <div class="t-ptitle">▓▒░<span class="pt t-uc">Overview</span>░▒▓ <span class="t-fill">${run(st.box === 'ascii' ? '=' : '═')}</span></div>
+    <div class="t-key"><span>key ›</span><span class="c-fg">█ group</span><span class="c-cyan">█ kind</span><span class="c-yellow">█ use</span><span class="c-magenta">█ project</span><span class="c-white">█ totals</span><span class="c-orange">█ needs action</span><span class="c-red">█ problem</span></div>
+    <div class="t-tiles">${tile('Saves', '1,284', 'across 12 hubs')}${tile('Waiting', '37', 'in inbox', 'c-orange')}${tile('Broken', '3', 'dead links', 'c-red')}${tile('Tags', '218', '7 layers')}</div>
+    <div class="t-grid">
+      ${panel('df -h /hubs', 'biggest first', `<div class="t-stack">${bars}</div><div class="t-pre" style="margin-top:8px"><span class="c-dim">26w </span>${spark} <span class="c-fg">▲ 18</span> <span class="c-dim">this week</span>\n<span class="c-dim">day </span>${heat}</div>`)}
+      ${panel('tree -L 2 hubs', 'open folders', `<div class="t-ctrls"><span>$ grep <span class="t-in">work</span></span><span><span class="c-dim">[</span><span class="c-fg">expand all</span><span class="c-dim">]</span> <span class="c-dim">[</span><span class="c-fg">collapse all</span><span class="c-dim">]</span></span></div><div class="t-pre">${tree}</div>`)}
+      ${panel('tail -n 4 saves.log', 'newest first', `<div class="t-tw"><table class="t-table"><thead><tr><th>Title</th><th>Kind</th><th>Use</th><th>Project</th><th>State</th></tr></thead><tbody>${rows}</tbody></table></div>`, { cls: 't-wide' })}
+      ${panel('commands', 'writes are marked', `<div class="t-stack">
+        <div class="t-cmdrow"><span class="t-run"><i>[ </i>▶ <span class="t-uc">Run</span><i> ]</i></span><code>sort-inbox</code><span class="t-writes">! changes data</span></div>
+        <div class="t-desc"># rename, tag and file new saves</div>
+        <div class="t-cmdrow"><span class="t-run"><i>[ </i>▶ <span class="t-uc">Run</span><i> ]</i></span><code>audit --dry-run</code></div>
+        <div class="t-desc"># check names and tags, change nothing</div>
+        <div class="t-cmdrow c-dim">$ chart size <span class="t-btn"><i>[</i>S<i>]</i></span><span class="t-btn on"><i>[</i>M<i>]</i></span><span class="t-btn"><i>[</i>L<i>]</i></span></div>
+        <div class="t-msg"><span class="c-orange">37</span> saves need action · <span class="c-red">3</span> links failed</div></div>`, { dbl: true, cls: 't-wide' })}
+    </div></div>`;
+}
+
+/* ───────── rendering ───────── */
+const swatch = (st, lg) => { const p = st[S.variant]; return `<span class="sw${lg ? ' lg' : ''}" style="background:${p.bg};color:${p.fg}" aria-hidden="true">›_</span>`; };
+
+function renderSidebar() {
+  const q = S.q.trim().toLowerCase(), match = st => !q || st.name.toLowerCase().includes(q);
+  const row = id => { const st = cur(id); return `<button class="srow${id === S.sel ? ' on' : ''}" data-id="${id}" aria-current="${id === S.sel}">${swatch(st)}<span class="sn">${esc(st.name)}</span>${isDirty(id) ? '<span class="dot" title="Unsaved changes" aria-label="Unsaved changes"></span>' : ''}${isPreset(id) ? ICON.lock : ''}</button>`; };
+  const pre = PRESETS.filter(p => match(cur(p.id))).map(p => row(p.id)).join('');
+  const users = Object.values(S.user).sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0));
+  let mine;
+  if (S.store === 'loading') mine = '<div class="empty">Loading your styles…</div>';
+  else if (!users.length) mine = '<div class="empty">No saved styles yet. Pick a preset, change anything, then choose Save As…</div>';
+  else { mine = users.filter(u => match(cur(u.id))).map(u => row(u.id)).join('') || '<div class="empty">No matches.</div>'; }
+  $('#slist').innerHTML = `<div class="sh">Presets</div>${pre || '<div class="empty">No matches.</div>'}<div class="sh"><span>My Styles</span><span>${users.length || ''}</span></div>${mine}`;
+  $('#b-del').disabled = isPreset(S.sel);
+  $('#store').innerHTML = S.store === 'native' ? `${ICON.disk}Saved on this Mac` : S.store === 'artifact' ? `${ICON.cloud}Saved with this artifact` : S.store === 'local' ? `${ICON.disk}Saved in this browser only` : `${ICON.wait}Connecting…`;
+}
+
+function renderToolbar() {
+  const st = cur(), d = isDirty(S.sel);
+  $('#t-name').textContent = S.mode === 'compare' ? 'Compare styles' : st.name;
+  $('#t-sub').textContent = S.mode === 'compare' ? `${S.cmpN} styles · ${S.variant} palettes` :
+    (d ? 'Edited' : isPreset(S.sel) ? 'Preset · Save As… to keep changes' : (base(S.sel).updatedAt ? 'Saved ' + ago(base(S.sel).updatedAt) : 'Saved'));
+  const sb = $('#b-save');
+  sb.textContent = isPreset(S.sel) ? 'Save As…' : 'Save';
+  sb.disabled = !isPreset(S.sel) && !d;
+  setSeg('#seg-mode', S.mode); setSeg('#seg-var', S.variant);
+}
+function setSeg(sel, v) { document.querySelectorAll(sel + ' button').forEach(b => b.setAttribute('aria-checked', String(b.dataset.v === v))); }
+
+function renderPreview() { $('#preview').innerHTML = termHTML(cur(), S.variant); }
+
+function pillHTML(k, role, p) {
+  if (!role) return '';
+  const r = role === 'onblue' ? contrast(p.blueFg, p.blue) : contrast(p[k], p.bg);
+  const need = role === 'ui' ? 3 : 4.5;
+  const cls = r >= (role === 'ui' ? 4.5 : 7) ? 'good' : r >= need ? 'ok' : 'bad';
+  const tag = role === 'ui' ? (r >= 3 ? '' : ' low') : r >= 7 ? ' AAA' : r >= 4.5 ? ' AA' : ' low';
+  const what = role === 'onblue' ? 'on selection' : 'on background';
+  return `<span class="pill ${cls}" title="${r.toFixed(2)}:1 contrast ${what}${role === 'ui' ? ' (frames need 3:1)' : ''}">${r.toFixed(1)}${tag}</span>`;
+}
+function updatePills() {
+  const p = cur()[S.variant];
+  TOK.forEach(([k, , , , role]) => { const el = document.querySelector(`[data-pill="${k}"]`); if (el) el.innerHTML = pillHTML(k, role, p); });
+  const h = $('#ihead'); if (h) h.innerHTML = iheadHTML();
+}
+function iheadHTML() { const st = cur(); return `${swatch(st, true)}<div><div class="iname">${esc(st.name)}</div><div class="isub">${isPreset(S.sel) ? 'Preset' : 'My style'} · editing the ${S.variant} palette</div></div>`; }
+
+function renderInspector() {
+  const st = cur(), p = st[S.variant], pre = isPreset(S.sel);
+  const crow = ([k, css, label, , role]) => `<div class="frow"><div class="lbl"><span>${label}</span><span class="tk">${css}</span></div><span data-pill="${k}">${pillHTML(k, role, p)}</span>
+    <input class="hex" id="hex-${k}" data-k="${k}" value="${p[k]}" maxlength="7" spellcheck="false" autocomplete="off" aria-label="${label} hex value">
+    <input type="color" class="well" id="col-${k}" data-k="${k}" value="${p[k]}" aria-label="${label} colour"></div>`;
+  const group = g => TOK.filter(t => t[3] === g).map(crow).join('');
+  const sw = (id, label, on) => `<div class="frow"><div class="lbl"><span>${label}</span></div><button class="switch" role="switch" id="${id}" aria-checked="${on}" aria-label="${label}"></button></div>`;
+  $('#insp').innerHTML = `
+    <div class="ihead" id="ihead">${iheadHTML()}</div>
+    <section class="grp"><h3>Style</h3><div class="card">
+      <div class="frow"><div class="lbl" style="flex:0 0 52px"><span>Name</span></div><input class="tf inline" id="f-name" value="${esc(st.name)}" maxlength="60" ${pre ? 'readonly' : ''} aria-label="Name"></div>
+      <div class="frow col"><label for="f-notes">Notes</label><textarea class="tf" id="f-notes" rows="2" maxlength="400" placeholder="What is this style trying out?">${esc(st.notes)}</textarea></div>
+    </div>${pre ? '<p class="note">Presets keep their name. Edit freely, then Save As… to keep a copy.</p>' : ''}</section>
+    <section class="grp"><h3>Base colours <em>${S.variant}</em></h3><div class="card">${group('base')}</div>
+      <p class="note">Badges show contrast against the background. Text aims for 4.5:1, frames for 3:1.</p></section>
+    <section class="grp"><h3>Highlight <em>${S.variant}</em></h3><div class="card">${group('hl')}</div>
+      <p class="note">Blue is for selection only: active tab, hover rows, pressed buttons and focus.</p></section>
+    <section class="grp"><h3>Condition colours <em>${S.variant}</em></h3><div class="card">${group('cond')}</div>
+      <p class="note">Each colour keeps one meaning on a page and never decorates.</p></section>
+    <section class="grp"><h3>Typography</h3><div class="card">
+      <div class="frow"><div class="lbl"><span>Typeface</span></div><select class="pop" id="f-font" aria-label="Typeface">${Object.entries(FONTS).map(([k, f]) => `<option value="${k}"${k === st.font ? ' selected' : ''}>${f.label}</option>`).join('')}</select></div>
+      <div class="frow"><div class="lbl" style="flex:0 0 74px"><span>Size</span></div><input type="range" class="range" id="f-size" min="10" max="18" step="0.5" value="${st.size}" aria-label="Font size"><span class="val" id="v-size">${st.size}px</span></div>
+      <div class="frow"><div class="lbl" style="flex:0 0 74px"><span>Line height</span></div><input type="range" class="range" id="f-lh" min="1.1" max="1.9" step="0.05" value="${st.lh}" aria-label="Line height"><span class="val" id="v-lh">${(+st.lh).toFixed(2)}</span></div>
+    </div></section>
+    <section class="grp"><h3>Frames &amp; details</h3><div class="card">
+      <div class="frow"><div class="lbl"><span>Box lines</span></div><select class="pop" id="f-box" aria-label="Box lines">${Object.entries(BOX).map(([k, b]) => `<option value="${k}"${k === st.box ? ' selected' : ''}>${b.label}  ${b.c[0]}${b.c[1]}${b.c[4]}</option>`).join('')}</select></div>
+      ${sw('f-dbl', 'Double lines on key panels', st.dblKey)}${sw('f-blink', 'Blinking cursor', st.blink)}${sw('f-upper', 'Uppercase titles', st.upper)}
+    </div></section>
+    <section class="grp"><h3>Actions</h3><div class="acts">
+      <button class="btn" id="a-revert" ${isDirty(S.sel) ? '' : 'disabled'}>Revert changes</button>
+      <button class="btn" id="a-dup">Duplicate</button>
+      ${pre ? '' : '<button class="btn danger" id="a-del">Delete…</button>'}
+    </div></section>`;
+}
+
+function renderCompare() {
+  const ids = S.cmp.slice(0, S.cmpN).map((id, i) => exists(id) ? id : PRESETS[i % PRESETS.length].id);
+  if (S.store !== 'loading') S.cmp.splice(0, ids.length, ...ids); // keep saved picks until saved styles have loaded
+  const opts = sel => `<optgroup label="Presets">${PRESETS.map(p => `<option value="${p.id}"${p.id === sel ? ' selected' : ''}>${esc(cur(p.id).name)}${isDirty(p.id) ? ' (edited)' : ''}</option>`).join('')}</optgroup>` +
+    (Object.keys(S.user).length ? `<optgroup label="My Styles">${Object.values(S.user).map(u => `<option value="${u.id}"${u.id === sel ? ' selected' : ''}>${esc(cur(u.id).name)}${isDirty(u.id) ? ' (edited)' : ''}</option>`).join('')}</optgroup>` : '');
+  const panes = ids.map((id, i) => `<div class="pane"><div class="phd">${swatch(cur(id))}<select class="pop" data-i="${i}" aria-label="Style ${i + 1}">${opts(id)}</select><button class="ibtn" data-pop="${id}" title="Pop out" aria-label="Pop out ${esc(cur(id).name)}"><svg class="i" viewBox="0 0 16 16"><path d="M9.5 2.5h4v4M13.5 2.5 9 7M6.5 13.5h-4v-4M2.5 13.5 7 9"/></svg></button><button class="btn sm" data-edit="${id}">Edit</button></div><div class="screen">${termHTML(cur(id), S.variant)}</div></div>`).join('');
+  const sts = ids.map(id => cur(id)), v = S.variant;
+  const cell = (val, color) => color ? `<span class="cv"><i style="background:${val}"></i>${val}</span>` : esc(val);
+  const rowsData = [
+    ...TOK.map(([k, css, label]) => ({ label: `${label} <span class="tk" style="font:10.5px var(--mono)">${css}</span>`, vals: sts.map(s => s[v][k]), color: true })),
+    { label: 'Typeface', vals: sts.map(s => FONTS[s.font].label) }, { label: 'Size', vals: sts.map(s => s.size + 'px') }, { label: 'Line height', vals: sts.map(s => (+s.lh).toFixed(2)) },
+    { label: 'Box lines', vals: sts.map(s => BOX[s.box].label) }, { label: 'Double key panels', vals: sts.map(s => s.dblKey ? 'On' : 'Off') },
+    { label: 'Blinking cursor', vals: sts.map(s => s.blink ? 'On' : 'Off') }, { label: 'Uppercase titles', vals: sts.map(s => s.upper ? 'On' : 'Off') },
+  ];
+  const diff = rowsData.filter(r => new Set(r.vals.map(x => String(x).toLowerCase())).size > 1);
+  const shown = S.showAll ? rowsData : diff;
+  const body = shown.map(r => { const same = new Set(r.vals.map(x => String(x).toLowerCase())).size === 1; return `<tr class="${same ? 'same' : ''}"><td>${r.label}</td>${r.vals.map(x => `<td>${cell(x, r.color)}</td>`).join('')}</tr>`; }).join('');
+  $('#v-cmp').innerHTML = `
+    <div class="cmp-bar"><div class="seg sm" role="radiogroup" aria-label="Number of styles" id="seg-n"><button role="radio" data-v="2" aria-checked="${S.cmpN === 2}">2 up</button><button role="radio" data-v="3" aria-checked="${S.cmpN === 3}">3 up</button></div>
+      <p class="note">Same demo screen in each style. Unsaved edits show here too. Dark or Light follows the toolbar.</p></div>
+    <div class="panes" style="--n:${S.cmpN}">${panes}</div>
+    <section class="grp"><h3><span>Differences · ${diff.length} of ${rowsData.length} settings</span><span style="display:flex;align-items:center;gap:8px;font-weight:500">Show all<button class="switch" role="switch" id="c-all" aria-checked="${S.showAll}" aria-label="Show all settings"></button></span></h3>
+      <div class="card dwrap">${shown.length ? `<table class="dt"><thead><tr><th>Setting</th>${sts.map(s => `<th>${esc(s.name)}</th>`).join('')}</tr></thead><tbody>${body}</tbody></table>` : '<div class="frow"><span class="note">These styles are identical.</span></div>'}</div></section>`;
+}
+
+function renderMain() {
+  $('#v-edit').hidden = S.mode !== 'edit'; $('#v-cmp').hidden = S.mode !== 'compare';
+  if (S.mode === 'edit') { renderPreview(); renderInspector(); } else renderCompare();
+}
+function refreshAll() { if (!exists(S.sel)) { if (S.store === 'loading') S.pendingSel = S.sel; S.sel = 'p_bookmark'; } renderSidebar(); renderToolbar(); renderMain(); saveUI(); if (popId) renderPop(); postLive(); }
+let liveRaf = 0;
+function postLive() {
+  if (!NATIVE || PREVIEW) return;
+  clearTimeout(liveRaf);
+  liveRaf = setTimeout(() => {
+    const styles = {};
+    [...PRESETS.map(p => p.id), ...Object.keys(S.user)].forEach(id => { styles[id] = { ...strip(cur(id)), dirty: isDirty(id) }; });
+    post({ type: 'live', json: JSON.stringify(styles), variant: S.variant });
+    post({ type: 'title', text: S.mode === 'compare' ? 'Compare' : cur().name + (isDirty(S.sel) ? ' · Edited' : '') });
+  }, 16);
+}
+function refreshLive() {
+  renderSidebar(); renderToolbar(); saveDrafts(); postLive();
+  if (S.mode === 'edit') { renderPreview(); updatePills(); const r = $('#a-revert'); if (r) r.disabled = !isDirty(S.sel); } else renderCompare();
+}
+
+/* ───────── storage ───────── */
+let db = null;
+async function connect() {
+  if (NATIVE) { S.store = 'native'; S.user = {}; const all = NATIVE.styles || {}; for (const id in all) S.user[id] = normalize({ ...all[id], id }); afterData(); return; }
+  let ns = null;
+  try { ns = window.claude?.use ? await window.claude.use('db') : null; } catch { ns = null; }
+  if (!ns) { useLocal(); return; }
+  db = ns;
+  const timer = setTimeout(() => { if (S.store === 'loading') useLocal('The artifact store did not answer, so styles save in this browser for now.'); }, 10000);
+  try {
+    db.collection('styles').onSnapshot(snap => {
+      clearTimeout(timer); S.store = 'artifact'; S.user = {};
+      snap.docs.forEach(d => { const x = d.data(); if (x) S.user[d.id] = normalize({ ...clone(x), id: d.id }); });
+      afterData();
+    }, err => { clearTimeout(timer); db = null; useLocal(`Couldn't reach the artifact store (${err?.code || 'error'}). Styles save in this browser for now.`); });
+  } catch (e) { clearTimeout(timer); db = null; useLocal(); }
+}
+function useLocal(msg) {
+  S.store = 'local'; S.user = {};
+  const all = ls.get('ts.styles', {}); for (const id in all) S.user[id] = normalize({ ...all[id], id });
+  afterData(); if (msg) hud(msg, 4200);
+}
+function afterData() {
+  for (const id in S.drafts) if (!exists(id)) delete S.drafts[id];
+  if (S.pendingSel && exists(S.pendingSel)) S.sel = S.pendingSel; // reopen on the style picked last time
+  S.pendingSel = null;
+  if (!exists(S.sel)) S.sel = 'p_bookmark';
+  refreshAll();
+}
+async function persist(st) {
+  const data = { ...strip(st), updatedAt: Date.now() };
+  if (S.store === 'native') post({ type: 'save', id: st.id, json: JSON.stringify(data, null, 2) });
+  else if (S.store === 'artifact' && db) await db.collection('styles').doc(st.id).set(data);
+  else { const all = ls.get('ts.styles', {}); all[st.id] = data; ls.set('ts.styles', all); }
+  S.user[st.id] = normalize({ ...data, id: st.id });
+}
+async function removeStyle(id) {
+  if (S.store === 'native') post({ type: 'delete', id });
+  else if (S.store === 'artifact' && db) await db.collection('styles').doc(id).delete();
+  else { const all = ls.get('ts.styles', {}); delete all[id]; ls.set('ts.styles', all); }
+  delete S.user[id]; delete S.drafts[id]; saveDrafts();
+}
+
+/* ───────── actions ───────── */
+let busy = false;
+async function save() {
+  if (busy) return;
+  if (isPreset(S.sel)) return openSaveAs();
+  if (!isDirty(S.sel)) return;
+  busy = true; $('#b-save').disabled = true;
+  try { await persist(clone(cur())); delete S.drafts[S.sel]; saveDrafts(); hud('Saved'); }
+  catch (e) { hud(`Couldn't save (${e?.code || e?.message || 'error'}). Your changes are still here.`, 4200); }
+  busy = false; refreshAll();
+}
+async function createFrom(src, name) {
+  const st = { ...clone(src), id: uid(), name: name.slice(0, 60) };
+  busy = true;
+  try { await persist(st); S.sel = st.id; hud('Saved “' + st.name + '”'); return true; }
+  catch (e) { hud(`Couldn't save (${e?.code || e?.message || 'error'}).`, 4200); return false; }
+  finally { busy = false; }
+}
+function openSaveAs() {
+  const st = cur(); $('#saveas-name').value = isPreset(S.sel) ? st.name + ' variant' : st.name + ' copy';
+  $('#dlg-saveas').showModal(); $('#saveas-name').select();
+}
+$('#saveas-cancel').onclick = () => $('#dlg-saveas').close();
+$('#f-saveas').addEventListener('submit', async e => {
+  e.preventDefault(); $('#dlg-saveas').close();
+  const name = $('#saveas-name').value.trim() || 'Untitled', from = S.sel, src = cur();
+  if (await createFrom(src, name)) { if (isPreset(from)) delete S.drafts[from]; saveDrafts(); }
+  refreshAll();
+});
+async function duplicate() { if (busy) return; if (await createFrom(cur(), cur().name + ' copy')) refreshAll(); }
+function askDelete() { if (isPreset(S.sel)) return; $('#del-title').textContent = `Delete “${cur().name}”?`; $('#dlg-del').showModal(); }
+$('#del-cancel').onclick = () => $('#dlg-del').close();
+$('#del-ok').addEventListener('click', async () => {
+  $('#dlg-del').close();
+  const id = S.sel, name = cur().name;
+  try { await removeStyle(id); S.sel = 'p_bookmark'; hud(`Deleted “${name}”`); } catch (e) { hud(`Couldn't delete (${e?.code || 'error'}).`, 4200); }
+  refreshAll();
+});
+function revert() { delete S.drafts[S.sel]; saveDrafts(); refreshAll(); hud('Reverted'); }
+
+/* export */
+function exportText() {
+  const st = cur();
+  if (S.exFmt === 'json') return JSON.stringify(strip(st), null, 2);
+  const line = p => TOK.reduce((a, [k, css], i) => a + (i && ['blue', 'cyan'].includes(k) ? '\n  ' : (i ? ' ' : '')) + `${css}: ${p[k]};`, '');
+  return `/* ${st.name}: ${FONTS[st.font].label} ${st.size}px / ${(+st.lh).toFixed(2)}, ${BOX[st.box].label.toLowerCase()} frames${st.dblKey ? ', double key panels' : ''} */
+:root {
+  /* base: dark (the default look) */
+  ${line(st.dark)}
+  --mono: ${FONTS[st.font].stack};
+  --fs: ${st.size}px; --lh: ${(+st.lh).toFixed(2)};
+  color-scheme: dark;
+}
+/* light "paper terminal" */
+@media (prefers-color-scheme: light) { :root:not([data-theme="dark"]) {
+  ${line(st.light)}
+  color-scheme: light; } }
+:root[data-theme="light"] {
+  ${line(st.light)}
+  color-scheme: light; }`;
+}
+function openExport() { $('#ex-title').textContent = `Export “${cur().name}”`; setSeg('#seg-ex', S.exFmt); $('#ex-code').textContent = exportText(); $('#dlg-export').showModal(); }
+$('#seg-ex').addEventListener('click', e => { const b = e.target.closest('button'); if (!b) return; S.exFmt = b.dataset.v; setSeg('#seg-ex', S.exFmt); $('#ex-code').textContent = exportText(); });
+$('#ex-done').onclick = () => $('#dlg-export').close();
+$('#ex-file').onclick = () => { const slug = cur().name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'theme'; post({ type: 'saveFile', name: slug + (S.exFmt === 'css' ? '.css' : '.json'), text: exportText() }); };
+$('#ex-copy').onclick = () => {
+  const text = exportText();
+  if (NATIVE) { post({ type: 'copy', text }); return hud('Copied'); }
+  const fallback = () => { const r = document.createRange(); r.selectNodeContents($('#ex-code')); const s = getSelection(); s.removeAllRanges(); s.addRange(r); hud('Selected. Press ⌘C to copy.'); };
+  try { navigator.clipboard.writeText(text).then(() => hud('Copied'), fallback); } catch { fallback(); }
+};
+
+/* pop-out preview */
+let popId = null, popOpener = null;
+function renderPop() {
+  if (!popId) return;
+  if (!exists(popId)) return closePop();
+  const st = cur(popId);
+  $('#pop-body').innerHTML = termHTML(st, S.variant);
+  $('#popout').style.background = st[S.variant].bg;
+  $('#pop-name').textContent = st.name + (isDirty(popId) ? ' · edited' : '');
+  setSeg('#seg-pvar', S.variant);
+}
+function openPop(id = S.sel) { if (NATIVE) { post({ type: 'popout', id, variant: S.variant }); return; } popId = id; popOpener = document.activeElement; $('#popout').hidden = false; renderPop(); $('#pop-close').focus(); }
+function closePop() {
+  if (!popId) return;
+  popId = null; $('#popout').hidden = true; $('#pop-body').innerHTML = '';
+  if (document.fullscreenElement) { try { document.exitFullscreen().catch(() => {}); } catch {} }
+  popOpener?.focus?.();
+}
+$('#b-pop').onclick = () => openPop(S.mode === 'compare' ? S.cmp[0] : S.sel);
+$('#pop-close').onclick = closePop;
+$('#pop-fs').hidden = !document.fullscreenEnabled;
+$('#pop-fs').onclick = () => {
+  try { const p = document.fullscreenElement ? document.exitFullscreen() : $('#popout').requestFullscreen(); p?.catch?.(() => hud('Full screen isn’t available here.')); }
+  catch { hud('Full screen isn’t available here.'); }
+};
+$('#seg-pvar').addEventListener('click', e => { if (PREVIEW) return; const b = e.target.closest('button'); if (!b) return; S.variant = b.dataset.v; refreshAll(); });
+
+let hudT;
+function hud(msg, ms = 1800) { const h = $('#hud'); h.textContent = msg; h.classList.add('show'); clearTimeout(hudT); hudT = setTimeout(() => h.classList.remove('show'), ms); }
+
+/* ───────── events ───────── */
+const win = $('#win');
+const closeSide = () => win.classList.remove('side-open');
+$('#b-side').onclick = () => win.classList.toggle('side-open');
+$('#scrim').onclick = closeSide;
+$('#slist').addEventListener('click', e => { const r = e.target.closest('.srow'); if (!r) return; S.sel = r.dataset.id; if (S.mode === 'compare') { S.cmp[0] = S.sel; } closeSide(); refreshAll(); });
+$('#q').addEventListener('input', e => { S.q = e.target.value; renderSidebar(); });
+$('#b-add').onclick = duplicate; $('#b-del').onclick = askDelete;
+$('#b-save').onclick = save; $('#b-export').onclick = openExport;
+$('#seg-mode').addEventListener('click', e => { const b = e.target.closest('button'); if (!b) return; S.mode = b.dataset.v; if (S.mode === 'compare' && !S.cmp.includes(S.sel)) S.cmp[0] = S.sel; refreshAll(); });
+$('#seg-var').addEventListener('click', e => { const b = e.target.closest('button'); if (!b) return; S.variant = b.dataset.v; refreshAll(); });
+
+const insp = $('#insp');
+function setColor(k, v, from) {
+  draft()[S.variant][k] = v.toLowerCase();
+  const hx = $('#hex-' + k), cw = $('#col-' + k);
+  if (from !== 'hex' && hx) { hx.value = v; hx.classList.remove('bad'); }
+  if (from !== 'well' && cw) cw.value = v;
+  refreshLive();
+}
+insp.addEventListener('input', e => {
+  const t = e.target;
+  if (t.classList.contains('well')) return setColor(t.dataset.k, t.value, 'well');
+  if (t.classList.contains('hex')) { let v = t.value.trim(); if (!v.startsWith('#')) v = '#' + v; if (HEX.test(v)) { t.classList.remove('bad'); setColor(t.dataset.k, v, 'hex'); } return; }
+  if (t.id === 'f-name') { draft().name = t.value || 'Untitled'; return refreshLive(); }
+  if (t.id === 'f-notes') { draft().notes = t.value; return refreshLive(); }
+  if (t.id === 'f-size') { draft().size = +t.value; $('#v-size').textContent = t.value + 'px'; return refreshLive(); }
+  if (t.id === 'f-lh') { draft().lh = +t.value; $('#v-lh').textContent = (+t.value).toFixed(2); return refreshLive(); }
+});
+insp.addEventListener('change', e => {
+  const t = e.target;
+  if (t.classList.contains('hex')) { let v = t.value.trim(); if (!v.startsWith('#')) v = '#' + v; if (!HEX.test(v)) { t.classList.add('bad'); hud('Use a 6-digit hex colour, like #00e35a.', 2600); t.value = cur()[S.variant][t.dataset.k]; setTimeout(() => t.classList.remove('bad'), 1400); } else t.value = v.toLowerCase(); }
+  if (t.id === 'f-font') { draft().font = t.value; refreshLive(); }
+  if (t.id === 'f-box') { draft().box = t.value; refreshLive(); }
+});
+insp.addEventListener('click', e => {
+  const sw = e.target.closest('.switch');
+  if (sw) { const on = sw.getAttribute('aria-checked') !== 'true'; sw.setAttribute('aria-checked', on); draft()[{ 'f-dbl': 'dblKey', 'f-blink': 'blink', 'f-upper': 'upper' }[sw.id]] = on; return refreshLive(); }
+  if (e.target.closest('#a-revert')) return revert();
+  if (e.target.closest('#a-dup')) return duplicate();
+  if (e.target.closest('#a-del')) return askDelete();
+});
+const cmp = $('#v-cmp');
+cmp.addEventListener('change', e => { const t = e.target; if (t.matches('select[data-i]')) { S.cmp[+t.dataset.i] = t.value; saveUI(); renderCompare(); } });
+cmp.addEventListener('click', e => {
+  const n = e.target.closest('#seg-n button'); if (n) { S.cmpN = +n.dataset.v; while (S.cmp.length < 3) S.cmp.push(PRESETS[S.cmp.length].id); saveUI(); renderToolbar(); return renderCompare(); }
+  if (e.target.closest('#c-all')) { S.showAll = !S.showAll; return renderCompare(); }
+  const po = e.target.closest('[data-pop]'); if (po) return openPop(po.dataset.pop);
+  const ed = e.target.closest('[data-edit]'); if (ed) { S.sel = ed.dataset.edit; S.mode = 'edit'; refreshAll(); }
+});
+document.addEventListener('keydown', e => {
+  if (PREVIEW) return;
+  const mod = e.metaKey || e.ctrlKey;
+  if (mod && e.key.toLowerCase() === 's') { e.preventDefault(); save(); }
+  else if (mod && e.key.toLowerCase() === 'd') { e.preventDefault(); duplicate(); }
+  else if (e.key === 'Escape') { if (popId) closePop(); else closeSide(); }
+  else if (!mod && !e.altKey && e.key.toLowerCase() === 'p' && !/^(INPUT|TEXTAREA|SELECT)$/.test(e.target.tagName) && !document.querySelector('dialog[open]')) {
+    if (popId) closePop(); else openPop(S.mode === 'compare' ? S.cmp[0] : S.sel);
+  }
+});
+setInterval(() => { if (S.mode === 'edit' && !isDirty(S.sel)) renderToolbar(); }, 30000);
+
+window.TS = {
+  save, duplicate, revert, openExport,
+  popOut: () => openPop(S.mode === 'compare' ? S.cmp[0] : S.sel),
+  setVariant: v => { S.variant = v === 'light' ? 'light' : 'dark'; refreshAll(); },
+  setMode: m => { S.mode = m === 'compare' ? 'compare' : 'edit'; if (S.mode === 'compare' && !S.cmp.includes(S.sel)) S.cmp[0] = S.sel; refreshAll(); },
+};
+$('#ex-file').hidden = !NATIVE;
+
+if (PREVIEW) {
+  // a native pop-out window: only the terminal, kept live by the main window
+  document.documentElement.classList.add('preview-only');
+  const id = NATIVE.previewId;
+  let live = NATIVE.live || {}, v = NATIVE.variant === 'light' ? 'light' : 'dark';
+  const draw = () => {
+    $('#popout').hidden = false;
+    const raw = Object.keys(live).length ? live[id] : (NATIVE.styles?.[id] || PRE[id]);
+    if (!raw) { $('#pop-body').innerHTML = '<p class="gone">This style was deleted. You can close this window.</p>'; $('#pop-name').textContent = 'Deleted style'; post({ type: 'title', text: 'Deleted style' }); return; }
+    const st = normalize({ ...raw, id });
+    $('#pop-body').innerHTML = termHTML(st, v);
+    $('#popout').style.background = st[v].bg;
+    $('#pop-name').textContent = st.name + (raw.dirty ? ' · edited' : '');
+    setSeg('#seg-pvar', v);
+    post({ type: 'title', text: `${st.name} · ${v === 'dark' ? 'Dark' : 'Light'}` });
+  };
+  window.TS_live = s => { if (s && typeof s === 'object') live = s; draw(); };
+  $('#seg-pvar').addEventListener('click', e => { const b = e.target.closest('button'); if (!b) return; v = b.dataset.v; draw(); });
+  draw();
+} else {
+  refreshAll();
+  connect();
+}
+</script>
