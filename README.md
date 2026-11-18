@@ -119,7 +119,6 @@ swift docs/shoot.swift "ThemeStudioMac/build/Theme Studio.app/Contents/Resources
 - arm64 only.
 - JetBrains Mono, IBM Plex Mono, Fira Code and Space Mono load from Google Fonts.
 
-
 ## License
 
 [MIT](LICENSE)
