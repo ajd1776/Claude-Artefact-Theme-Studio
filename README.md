@@ -118,4 +118,8 @@ swift docs/shoot.swift "ThemeStudioMac/build/Theme Studio.app/Contents/Resources
 - Ad-hoc signed: build on the Mac you run it on.
 - arm64 only.
 - JetBrains Mono, IBM Plex Mono, Fira Code and Space Mono load from Google Fonts.
-- No license yet; all rights reserved.
+
+
+## License
+
+[MIT](LICENSE)
