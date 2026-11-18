@@ -2,7 +2,9 @@
 
 # Theme Studio
 
-macOS app for editing, comparing and saving variants of a terminal-style UI theme, and setting one as the default theme for Claude-built pages.
+macOS app for defining the visual theme Claude uses when it generates artifacts, HTML pages and previews.
+
+Claude styles those outputs with a Claude Code skill (`~/.claude/skills/terminal-preview/`) that holds a theme spec and a reference page. Theme Studio is the editor for that theme: build and compare variants, then **Set as Default Theme** to write the chosen one into the skill. Every artifact Claude generates after that uses it.
 
 ![Editor](docs/screenshots/editor-dark.png)
 
