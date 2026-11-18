@@ -24,7 +24,7 @@ let examples = """
   s_night: { name: 'Night Shift', updatedAt: \(now - 26 * 3_600_000), box: 'rounded', font: 'fira',
     dark: { bg: '#07040e', fg: '#c8b6ff', fg2: '#9c86e6', dim: '#7a66b8', line: '#3d2f66', faint: '#1a1230', cyan: '#5ef2ff' } } }
 """
-let main = "{ mode: 'main', styles: \(examples) }"
+let main = "{ mode: 'main', defaultId: 's_forest', styles: \(examples) }"
 
 let shots: [Shot] = [
     Shot(name: "editor-dark", width: 1440, height: 900, dark: true,
